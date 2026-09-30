@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LN-LAB</title>
+<meta name="description" content="LN-LAB">
+<meta name="theme-color" content="#fafafa">
+<meta name="color-scheme" content="light dark">
+<link rel="canonical" href="https://LN-LAB.github.io/list/">
+<script>
+(function(){try{var t=localStorage.getItem("ln-lab-theme");var d=window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.setAttribute("data-theme",t||(d?"dark":"light"));}catch(e){document.documentElement.setAttribute("data-theme","light");}})();
+</script>
+<style>
+/* ── reset & tokens ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --bg:#fafafa;
+  --fg:#18181b;
+  --muted:#8b8b92;
+  --line:#e6e6e9;
+  --surface:rgba(255,255,255,0.55);
+  --shadow:0 10px 30px rgba(0,0,0,0.06);
+  --glow-warm:rgba(255,214,170,0.32);
+  --glow-cool:rgba(170,205,255,0.26);
+}
+[data-theme="dark"]{
+  --bg:#0b0b0d;
+  --fg:#ededf0;
+  --muted:#78787f;
+  --line:#222226;
+  --surface:rgba(255,255,255,0.03);
+  --shadow:0 10px 30px rgba(0,0,0,0.5);
+  --glow-warm:rgba(255,170,100,0.10);
+  --glow-cool:rgba(120,160,255,0.10);
+}
+
+html{font-size:16px;scroll-behavior:smooth;}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-weight:300;
+  line-height:1.7;
+  color:var(--fg);
+  background:var(--bg);
+  min-height:100vh;
+  padding:2rem;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+  transition:background 0.4s ease, color 0.4s ease;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* ── ambient light field ── */
+.light-field{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.light-field::before,.light-field::after{
+  content:"";position:absolute;width:72vmax;height:72vmax;border-radius:50%;
+  filter:blur(100px);will-change:transform;
+}
+.light-field::before{
+  background:radial-gradient(circle,var(--glow-warm) 0%,transparent 70%);
+  top:-28vmax;right:-18vmax;
+  animation:drift-warm 24s ease-in-out infinite alternate;
+}
+.light-field::after{
+  background:radial-gradient(circle,var(--glow-cool) 0%,transparent 70%);
+  bottom:-28vmax;left:-18vmax;
+  animation:drift-cool 28s ease-in-out infinite alternate;
+}
+@keyframes drift-warm{0%{transform:translate(0,0) scale(1);}100%{transform:translate(-6vmax,5vmax) scale(1.14);}}
+@keyframes drift-cool{0%{transform:translate(0,0) scale(1);}100%{transform:translate(6vmax,-5vmax) scale(1.12);}}
+
+/* ── theme toggle ── */
+.theme-toggle{
+  position:fixed;top:1.5rem;right:1.5rem;z-index:10;
+  width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--line);background:var(--surface);
+  color:var(--muted);cursor:pointer;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:color .3s ease, border-color .3s ease, background .3s ease, transform .3s ease;
+}
+.theme-toggle:hover{color:var(--fg);border-color:var(--fg);transform:scale(1.06);}
+.theme-toggle:focus-visible{outline:2px solid var(--fg);outline-offset:3px;}
+.theme-toggle svg{width:18px;height:18px;display:block;}
+.icon-sun{display:none;}
+[data-theme="dark"] .icon-moon{display:none;}
+[data-theme="dark"] .icon-sun{display:block;}
+
+/* ── container ── */
+.container{
+  position:relative;z-index:1;
+  max-width:640px;width:100%;
+  margin:0 auto;
+  padding:2.5rem 0 1.5rem;
+  animation:fade-up 1s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes fade-up{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── back link ── */
+.back-link{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  font-size:0.85rem;font-weight:300;letter-spacing:0.02em;
+  color:var(--muted);text-decoration:none;
+  margin-bottom:3rem;
+  transition:color .25s ease, gap .25s ease;
+}
+.back-link:hover{color:var(--fg);gap:0.75rem;}
+.back-link:focus-visible{outline:2px solid var(--fg);outline-offset:3px;border-radius:4px;}
+
+/* ── header ── */
+.page-header{margin-bottom:3.5rem;}
+.page-header .mark{
+  display:inline-block;font-size:0.7rem;font-weight:500;
+  letter-spacing:0.34em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:1.5rem;
+  padding-bottom:0.85rem;border-bottom:1px solid var(--line);
+}
+.page-header h1{
+  font-size:clamp(1.9rem,6vw,2.7rem);
+  font-weight:200;letter-spacing:0.01em;line-height:1.25;
+  color:var(--fg);margin-bottom:1rem;
+}
+.page-header p{
+  font-size:0.95rem;font-weight:300;line-height:1.85;
+  color:var(--muted);max-width:480px;
+}
+
+/* ── directory ── */
+.directory-title{
+  font-size:0.68rem;font-weight:500;
+  letter-spacing:0.3em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:1.25rem;
+}
+.directory{display:grid;gap:0.75rem;}
+.directory-item{
+  display:flex;align-items:center;justify-content:space-between;gap:1.25rem;
+  padding:1.35rem 1.5rem;
+  border-radius:16px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  text-decoration:none;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:border-color .3s ease, background .3s ease, transform .3s ease, box-shadow .3s ease;
+  animation:fade-up 0.8s cubic-bezier(0.22,1,0.36,1) both;
+}
+.directory-item:hover{
+  border-color:var(--fg);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow);
+}
+.directory-item:focus-visible{outline:2px solid var(--fg);outline-offset:3px;}
+.directory-item-text{text-align:left;}
+.directory-item-title{
+  display:block;font-size:1rem;font-weight:400;letter-spacing:0.01em;
+  color:var(--fg);margin-bottom:0.3rem;
+}
+.directory-item-desc{
+  display:block;font-size:0.84rem;font-weight:300;
+  color:var(--muted);line-height:1.6;
+}
+.directory-item-arrow{
+  font-size:1rem;color:var(--muted);flex-shrink:0;
+  transition:transform .3s ease, color .3s ease;
+}
+.directory-item:hover .directory-item-arrow{
+  transform:translateX(4px);color:var(--fg);
+}
+
+/* ── footer ── */
+.footer{
+  margin-top:4rem;padding-top:1.75rem;
+  border-top:1px solid var(--line);
+  font-size:0.74rem;letter-spacing:0.04em;
+  color:var(--muted);text-align:center;
+}
+
+/* ── responsive ── */
+@media (max-width:520px){
+  body{padding:1.4rem;}
+  .theme-toggle{top:1rem;right:1rem;width:38px;height:38px;}
+  .container{padding:1.5rem 0 1rem;}
+  .back-link{margin-bottom:2.25rem;}
+  .page-header{margin-bottom:2.5rem;}
+  .directory-item{padding:1.15rem 1.25rem;border-radius:14px;}
+  .footer{margin-top:3rem;}
+}
+
+/* ── reduced motion ── */
+@media (prefers-reduced-motion: reduce){
+  .light-field::before,.light-field::after,.container,.directory-item{animation:none;}
+  *{transition-duration:0.01ms !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="light-field" aria-hidden="true"></div>
+
+<button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2v2.2M12 19.8V22M4.22 4.22l1.56 1.56M18.22 18.22l1.56 1.56M2 12h2.2M19.8 12H22M4.22 19.78l1.56-1.56M18.22 5.78l1.56-1.56"/>
+  </svg>
+</button>
+
+<main class="container">
+
+  <a class="back-link" href="https://ln-lab.github.io/">← Back</a>
+
+  <header class="page-header">
+    <span class="mark">LN-LAB</span>
+    <h1>Projects</h1>
+    <p></p>
+  </header>
+
+  <p class="directory-title">Directory, maybe.</p>
+
+  <div class="directory">
+
+    <a class="directory-item" href="https://ln-lab.github.io/optics" style="animation-delay:0.05s">
+      <span class="directory-item-text">
+        <span class="directory-item-title">Optics</span>
+        <span class="directory-item-desc">Light, refraction, and dispersion — an interactive study</span>
+      </span>
+      <span class="directory-item-arrow">→</span>
+    </a>
+
+    <a class="directory-item" href="https://ln-lab.github.io/explorer" style="animation-delay:0.12s">
+      <span class="directory-item-text">
+        <span class="directory-item-title">world explorer</span>
+        <span class="directory-item-desc">Let's see which city you'll get.</span>
+      </span>
+      <span class="directory-item-arrow">→</span>
+    </a>
+
+  </div>
+
+  <footer class="footer">©LN-LAB 2026. All rights reserved.</footer>
+
+</main>
+
+<script>
+(function(){
+  var r = document.documentElement;
+  var b = document.getElementById("themeToggle");
+  function sync(){
+    var d = r.getAttribute("data-theme") === "dark";
+    b.setAttribute("aria-label", d ? "Switch to light mode" : "Switch to dark mode");
+  }
+  b.addEventListener("click", function(){
+    var next = r.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    r.setAttribute("data-theme", next);
+    try{ localStorage.setItem("ln-lab-theme", next); }catch(e){}
+    sync();
+  });
+  sync();
+})();
+</script>
+
+</body>
+</html>
