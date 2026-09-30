@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LN-LAB — Optics</title>
+<meta name="description" content="An interactive study of light: refraction, dispersion, and the quiet beauty of optics.">
+<meta name="theme-color" content="#08080a">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+  html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#08080a;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  canvas{
+    display:block;
+    width:100vw;
+    height:100vh;
+    cursor:crosshair;
+    touch-action:none;
+  }
+
+  /* ── HUD ── */
+  .hud{
+    position:fixed;
+    top:2rem;
+    left:2rem;
+    z-index:10;
+    pointer-events:none;
+    user-select:none;
+    animation:hudIn 1.2s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  @keyframes hudIn{
+    from{opacity:0;transform:translateY(-8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .hud-mark{
+    font-size:.62rem;
+    font-weight:500;
+    letter-spacing:.36em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,.32);
+    margin-bottom:.7rem;
+  }
+
+  .hud-title{
+    font-size:1.35rem;
+    font-weight:200;
+    letter-spacing:.02em;
+    color:rgba(255,255,255,.88);
+    margin-bottom:.45rem;
+  }
+
+  .hud-desc{
+    font-size:.76rem;
+    font-weight:300;
+    color:rgba(255,255,255,.3);
+    max-width:270px;
+    line-height:1.7;
+  }
+
+  .hint{
+    position:fixed;
+    bottom:1.5rem;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:10;
+    font-size:.7rem;
+    font-weight:300;
+    letter-spacing:.1em;
+    color:rgba(255,255,255,.22);
+    pointer-events:none;
+    user-select:none;
+    white-space:nowrap;
+    animation:hintIn 1.5s 0.6s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  @keyframes hintIn{
+    from{opacity:0;}
+    to{opacity:1;}
+  }
+
+  @media (max-width:600px){
+    .hud{top:1.4rem;left:1.4rem;}
+    .hud-title{font-size:1.15rem;}
+    .hud-desc{font-size:.7rem;max-width:210px;}
+    .hint{font-size:.62rem;bottom:1.1rem;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="hud">
+  <div class="hud-mark">LN-LAB</div>
+  <div class="hud-title">Optics</div>
+  <div class="hud-desc">Light, refraction, and dispersion — an interactive study.</div>
+</div>
+
+<div class="hint">Drag the light or rotate the prism</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   Canvas setup
+   ═══════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+let W = 0, H = 0, DPR = 1;
+
+/* ═══════════════════════════════════════════════════════════
+   Scene state
+   ═══════════════════════════════════════════════════════════ */
+const light = { x: 0, y: 0 };
+const prism = { cx: 0, cy: 0, size: 0, rotation: -0.35 };
+
+let dragging = null;
+let dragStartAngle = 0;
+let prismStartRotation = 0;
+
+/* ═══════════════════════════════════════════════════════════
+   Rendering scheduler
+   ═══════════════════════════════════════════════════════════ */
+let pending = false;
+
+function requestRender(){
+  if(pending) return;
+  pending = true;
+  requestAnimationFrame(function(){
+    pending = false;
+    render();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════════════════ */
+let layoutReady = false;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  if(!layoutReady){
+    light.x = W * 0.13;
+    light.y = H * 0.50;
+    layoutReady = true;
+  }
+
+  prism.cx = W * 0.52;
+  prism.cy = H * 0.50;
+  prism.size = Math.min(W, H) * 0.19;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Physics — glass dispersion
+   ═══════════════════════════════════════════════════════════ */
+function glassN(wl){
+  // Cauchy-style dispersion, exaggerated for visual clarity.
+  // λ in nm → n(λ) = A + B / λ²   (λ in µm)
+  const um = wl / 1000;
+  return 1.5 + 0.020 / (um * um);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Spectrum — wavelength → RGB
+   ═══════════════════════════════════════════════════════════ */
+const wlCache = new Map();
+
+function wlToRGB(wl){
+  const cached = wlCache.get(wl);
+  if(cached) return cached;
+
+  let R = 0, G = 0, B = 0;
+
+  if(wl >= 380 && wl < 440){
+    R = -(wl - 440) / (440 - 380);
+    B = 1;
+  } else if(wl >= 440 && wl < 490){
+    G = (wl - 440) / (490 - 440);
+    B = 1;
+  } else if(wl >= 490 && wl < 510){
+    G = 1;
+    B = -(wl - 510) / (510 - 490);
+  } else if(wl >= 510 && wl < 580){
+    R = (wl - 510) / (580 - 510);
+    G = 1;
+  } else if(wl >= 580 && wl < 645){
+    R = 1;
+    G = -(wl - 645) / (645 - 580);
+  } else if(wl >= 645 && wl <= 780){
+    R = 1;
+  }
+
+  let f = 1;
+  if(wl >= 380 && wl < 420)       f = 0.3 + 0.7 * (wl - 380) / 40;
+  else if(wl >= 420 && wl < 700)  f = 1;
+  else if(wl >= 700 && wl <= 780) f = 0.3 + 0.7 * (780 - wl) / 80;
+
+  const out = [
+    Math.round(R * f * 255),
+    Math.round(G * f * 255),
+    Math.round(B * f * 255)
+  ];
+
+  wlCache.set(wl, out);
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Geometry — prism polygon
+   ═══════════════════════════════════════════════════════════ */
+function getPrismPolygon(){
+  const pts = [];
+  const { cx, cy, size, rotation } = prism;
+
+  for(let i = 0; i < 3; i++){
+    const a = rotation + i * (Math.PI * 2 / 3) - Math.PI / 2;
+    pts.push({
+      x: cx + Math.cos(a) * size,
+      y: cy + Math.sin(a) * size
+    });
+  }
+  return pts;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Ray–polygon intersection
+   Returns nearest hit with outward normal, or null.
+   ═══════════════════════════════════════════════════════════ */
+function intersectPolygon(ox, oy, dx, dy, poly){
+  let best = null;
+  const n = poly.length;
+
+  for(let i = 0; i < n; i++){
+    const p1 = poly[i];
+    const p2 = poly[(i + 1) % n];
+
+    const ex = p2.x - p1.x;
+    const ey = p2.y - p1.y;
+
+    const det = ex * dy - dx * ey;
+    if(Math.abs(det) < 1e-12) continue;
+
+    const fx = p1.x - ox;
+    const fy = p1.y - oy;
+
+    const t = (-fx * ey + ex * fy) / det;
+    const s = ( dx * fy - dy * fx) / det;
+
+    if(t > 1e-6 && s >= -1e-9 && s <= 1 + 1e-9){
+      if(!best || t < best.t){
+        let nx = ey;
+        let ny = -ex;
+        const len = Math.hypot(nx, ny);
+        nx /= len;
+        ny /= len;
+
+        // Make normal point outward (away from polygon centre)
+        const mx = (p1.x + p2.x) * 0.5;
+        const my = (p1.y + p2.y) * 0.5;
+        if(nx * (mx - prism.cx) + ny * (my - prism.cy) < 0){
+          nx = -nx; ny = -ny;
+        }
+
+        best = { t, nx, ny };
+      }
+    }
+  }
+
+  return best;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Point-in-convex-polygon test
+   ═══════════════════════════════════════════════════════════ */
+function pointInPoly(x, y, poly){
+  const n = poly.length;
+
+  for(let i = 0; i < n; i++){
+    const p1 = poly[i];
+    const p2 = poly[(i + 1) % n];
+
+    const ex = p2.x - p1.x;
+    const ey = p2.y - p1.y;
+
+    let nx = ey;
+    let ny = -ex;
+
+    const mx = (p1.x + p2.x) * 0.5;
+    const my = (p1.y + p2.y) * 0.5;
+
+    if(nx * (mx - prism.cx) + ny * (my - prism.cy) < 0){
+      nx = -nx; ny = -ny;
+    }
+
+    if((x - p1.x) * nx + (y - p1.y) * ny > 1e-9) return false;
+  }
+
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Ray tracing — recursive, with Fresnel + TIR
+   ═══════════════════════════════════════════════════════════ */
+function traceRay(ox, oy, dx, dy, wl, depth, intensity, segs, poly){
+
+  if(depth > 6 || intensity < 0.015) return;
+
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if(len < 1e-10) return;
+  dx /= len; dy /= len;
+
+  const inside = pointInPoly(ox, oy, poly);
+  const hit = intersectPolygon(ox, oy, dx, dy, poly);
+
+  /* No hit → ray escapes */
+  if(!hit){
+    segs.push({
+      x1: ox, y1: oy,
+      x2: ox + dx * 2400,
+      y2: oy + dy * 2400,
+      wl, intensity
+    });
+    return;
+  }
+
+  const hx = ox + dx * hit.t;
+  const hy = oy + dy * hit.t;
+
+  segs.push({ x1: ox, y1: oy, x2: hx, y2: hy, wl, intensity });
+
+  /* Surface normal, flipped to face the incoming ray */
+  let nx = hit.nx;
+  let ny = hit.ny;
+
+  const rawDot = dx * nx + dy * ny;
+  if(rawDot > 0){ nx = -nx; ny = -ny; }
+
+  const dot = dx * nx + dy * ny; // negative
+
+  const n1 = inside ? glassN(wl) : 1.0;
+  const n2 = inside ? 1.0 : glassN(wl);
+  const eta = n1 / n2;
+
+  const cosI = -dot;
+  if(cosI <= 0) return;
+
+  const sinT2 = eta * eta * (1 - cosI * cosI);
+  const eps = 0.5;
+
+  if(sinT2 <= 1){
+    /* ── Refraction possible ── */
+    const cosT = Math.sqrt(1 - sinT2);
+
+    /* Fresnel reflectance (unpolarised) */
+    const rsN = n1 * cosI - n2 * cosT;
+    const rsD = n1 * cosI + n2 * cosT;
+    const rpN = n1 * cosT - n2 * cosI;
+    const rpD = n1 * cosT + n2 * cosI;
+
+    const R = ((rsN / rsD) ** 2 + (rpN / rpD) ** 2) * 0.5;
+
+    /* Transmitted ray */
+    const tx = eta * dx + (eta * cosI - cosT) * nx;
+    const ty = eta * dy + (eta * cosI - cosT) * ny;
+
+    traceRay(
+      hx + tx * eps, hy + ty * eps,
+      tx, ty, wl, depth + 1,
+      intensity * 0.96,
+      segs, poly
+    );
+
+    /* Reflected ray (limited depth) */
+    if(R > 0.004 && depth < 4){
+      const rx = dx - 2 * dot * nx;
+      const ry = dy - 2 * dot * ny;
+
+      traceRay(
+        hx + rx * eps, hy + ry * eps,
+        rx, ry, wl, depth + 1,
+        intensity * R * 0.55,
+        segs, poly
+      );
+    }
+
+  } else {
+    /* ── Total internal reflection ── */
+    const rx = dx - 2 * dot * nx;
+    const ry = dy - 2 * dot * ny;
+
+    traceRay(
+      hx + rx * eps, hy + ry * eps,
+      rx, ry, wl, depth + 1,
+      intensity * 0.98,
+      segs, poly
+    );
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Trace the full beam
+   ═══════════════════════════════════════════════════════════ */
+function traceAllRays(poly){
+  const segs = [];
+
+  const baseAngle = Math.atan2(prism.cy - light.y, prism.cx - light.x);
+
+  const small = Math.min(W, H) < 700;
+  const numSpatial = small ? 9 : 14;
+  const numWl      = small ? 14 : 22;
+
+  const spread = small ? 0.16 : 0.13;
+
+  const wlMin = 400;
+  const wlMax = 680;
+
+  for(let i = 0; i < numSpatial; i++){
+    const s = numSpatial === 1 ? 0.5 : i / (numSpatial - 1);
+    const a = baseAngle + (s - 0.5) * spread;
+
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+
+    for(let j = 0; j < numWl; j++){
+      const wl = wlMin + (wlMax - wlMin) * (j / (numWl - 1));
+      traceRay(light.x, light.y, dx, dy, wl, 0, 1, segs, poly);
+    }
+  }
+
+  return segs;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Draw — rays (grouped by colour, additive blending)
+   ═══════════════════════════════════════════════════════════ */
+function drawRays(segs){
+  if(!segs.length) return;
+
+  /* Group segments by colour to minimise draw calls */
+  const groups = new Map();
+
+  for(let i = 0; i < segs.length; i++){
+    const s = segs[i];
+    const c = wlToRGB(s.wl);
+    const key = c[0] + ',' + c[1] + ',' + c[2];
+
+    let arr = groups.get(key);
+    if(!arr){
+      arr = [];
+      groups.set(key, arr);
+    }
+    arr.push(s);
+  }
+
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  /* Finer, more delicate ray layers */
+  const layers = [
+    { width: 3.2, alpha: 0.045 },
+    { width: 1.2, alpha: 0.14  },
+    { width: 0.45, alpha: 0.72 }
+  ];
+
+  for(let L = 0; L < layers.length; L++){
+    const layer = layers[L];
+    ctx.lineWidth = layer.width;
+
+    groups.forEach(function(arr, key){
+      ctx.strokeStyle = 'rgba(' + key + ',' + layer.alpha + ')';
+      ctx.beginPath();
+
+      for(let i = 0; i < arr.length; i++){
+        const s = arr[i];
+        ctx.moveTo(s.x1, s.y1);
+        ctx.lineTo(s.x2, s.y2);
+      }
+
+      ctx.stroke();
+    });
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Draw — the prism itself
+   ═══════════════════════════════════════════════════════════ */
+function drawPrism(poly){
+  ctx.beginPath();
+  ctx.moveTo(poly[0].x, poly[0].y);
+  for(let i = 1; i < poly.length; i++){
+    ctx.lineTo(poly[i].x, poly[i].y);
+  }
+  ctx.closePath();
+
+  /* Faint glassy fill */
+  const g = ctx.createLinearGradient(poly[0].x, poly[0].y, poly[2].x, poly[2].y);
+  g.addColorStop(0,    'rgba(140,180,255,0.055)');
+  g.addColorStop(0.5,  'rgba(200,220,255,0.018)');
+  g.addColorStop(1,    'rgba(255,215,175,0.055)');
+
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  /* Soft inner edge */
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  /* Crisp outer edge */
+  ctx.strokeStyle = 'rgba(200,220,255,0.32)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  /* Vertex glints */
+  for(let i = 0; i < poly.length; i++){
+    const p = poly[i];
+    const gg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 12);
+    gg.addColorStop(0, 'rgba(255,255,255,0.18)');
+    gg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gg;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Draw — the light source
+   ═══════════════════════════════════════════════════════════ */
+function drawLight(){
+  const x = light.x;
+  const y = light.y;
+
+  /* Broad halo */
+  const g1 = ctx.createRadialGradient(x, y, 0, x, y, 120);
+  g1.addColorStop(0,    'rgba(255,250,240,0.14)');
+  g1.addColorStop(0.4,  'rgba(255,245,220,0.045)');
+  g1.addColorStop(1,    'rgba(255,245,220,0)');
+
+  ctx.fillStyle = g1;
+  ctx.beginPath();
+  ctx.arc(x, y, 120, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* Core glow */
+  const g2 = ctx.createRadialGradient(x, y, 0, x, y, 12);
+  g2.addColorStop(0,   'rgba(255,255,255,1)');
+  g2.addColorStop(0.5, 'rgba(255,255,245,0.5)');
+  g2.addColorStop(1,   'rgba(255,255,245,0)');
+
+  ctx.fillStyle = g2;
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* Hot centre dot */
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath();
+  ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Main render
+   ═══════════════════════════════════════════════════════════ */
+function render(){
+
+  /* Deep background with subtle depth */
+  const bg = ctx.createRadialGradient(
+    W * 0.5, H * 0.5, 0,
+    W * 0.5, H * 0.5, Math.max(W, H) * 0.72
+  );
+  bg.addColorStop(0, '#0d0d11');
+  bg.addColorStop(1, '#050506');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const poly = getPrismPolygon();
+  const segs = traceAllRays(poly);
+
+  drawRays(segs);
+  drawPrism(poly);
+  drawLight();
+
+  /* Soft vignette on top */
+  const vg = ctx.createRadialGradient(
+    W * 0.5, H * 0.5, Math.min(W, H) * 0.35,
+    W * 0.5, H * 0.5, Math.max(W, H) * 0.75
+  );
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Interaction
+   ═══════════════════════════════════════════════════════════ */
+function getPointer(e){
+  const rect = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: src.clientX - rect.left,
+    y: src.clientY - rect.top
+  };
+}
+
+function onDown(e){
+  const p = getPointer(e);
+  const dLight = Math.hypot(p.x - light.x, p.y - light.y);
+
+  if(dLight < 90){
+    dragging = 'light';
+  } else {
+    const dPrism = Math.hypot(p.x - prism.cx, p.y - prism.cy);
+    if(dPrism < prism.size * 2.6){
+      dragging = 'prism';
+      dragStartAngle = Math.atan2(p.y - prism.cy, p.x - prism.cx);
+      prismStartRotation = prism.rotation;
+    }
+  }
+
+  if(dragging && e.cancelable) e.preventDefault();
+}
+
+function onMove(e){
+  if(!dragging) return;
+
+  if(e.cancelable) e.preventDefault();
+
+  const p = getPointer(e);
+
+  if(dragging === 'light'){
+    light.x = p.x;
+    light.y = p.y;
+  } else if(dragging === 'prism'){
+    const a = Math.atan2(p.y - prism.cy, p.x - prism.cx);
+    prism.rotation = prismStartRotation + (a - dragStartAngle);
+  }
+
+  requestRender();
+}
+
+function onUp(){
+  dragging = null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════════════════ */
+function init(){
+  resize();
+  requestRender();
+
+  canvas.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('touchend', onUp);
+  window.addEventListener('touchcancel', onUp);
+
+  window.addEventListener('resize', function(){
+    resize();
+    requestRender();
+  });
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
