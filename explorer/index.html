@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explorer — LN-LAB</title>
+<meta name="description" content="A random exploration of the great cities of Europe and the Americas — culture, economy, geography, and history.">
+<meta name="theme-color" content="#08080a">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+  :root{
+    --bg:#08080a;
+    --surface:#101014;
+    --surface-hover:#16161c;
+    --fg:#e8e8ec;
+    --muted:#7a7a85;
+    --dim:#4a4a54;
+    --line:rgba(255,255,255,.07);
+    --line-strong:rgba(255,255,255,.14);
+    --accent:#8ab4f8;
+    --accent-dim:rgba(138,180,248,.12);
+    --warm:rgba(255,200,150,.12);
+    --cool:rgba(140,180,255,.10);
+    --radius:16px;
+    --radius-sm:10px;
+  }
+
+  html{font-size:16px;scroll-behavior:smooth;}
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-weight:300;line-height:1.7;color:var(--fg);background:var(--bg);
+    min-height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    overflow-x:hidden;display:flex;flex-direction:column;align-items:center;
+    padding:2rem 1.5rem 3rem;
+  }
+
+  .light-field{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+  .light-field::before,.light-field::after{
+    content:"";position:absolute;width:65vmax;height:65vmax;border-radius:50%;
+    filter:blur(110px);will-change:transform;
+  }
+  .light-field::before{
+    background:radial-gradient(circle,var(--warm) 0%,transparent 70%);
+    top:-22vmax;right:-15vmax;animation:drift-warm 26s ease-in-out infinite alternate;
+  }
+  .light-field::after{
+    background:radial-gradient(circle,var(--cool) 0%,transparent 70%);
+    bottom:-22vmax;left:-15vmax;animation:drift-cool 30s ease-in-out infinite alternate;
+  }
+  @keyframes drift-warm{0%{transform:translate(0,0) scale(1);}100%{transform:translate(-5vmax,4vmax) scale(1.12);}}
+  @keyframes drift-cool{0%{transform:translate(0,0) scale(1);}100%{transform:translate(5vmax,-4vmax) scale(1.1);}}
+
+  .shell{position:relative;z-index:1;width:100%;max-width:820px;display:flex;flex-direction:column;gap:1.75rem;}
+
+  /* ── Header ── */
+  .header{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:1.5rem;animation:fade-up .9s cubic-bezier(.22,1,.36,1) both;
+  }
+  .header-left{display:flex;flex-direction:column;gap:.35rem;}
+  .mark{
+    font-size:.6rem;font-weight:500;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--muted);padding-bottom:.65rem;border-bottom:1px solid var(--line);display:inline-block;
+  }
+  .header h1{font-size:clamp(1.6rem,4vw,2.1rem);font-weight:200;letter-spacing:.01em;line-height:1.25;color:var(--fg);}
+  .header h1 em{font-style:normal;color:var(--muted);font-weight:100;}
+  .header-sub{font-size:.82rem;font-weight:300;color:var(--muted);max-width:380px;line-height:1.65;}
+  .header-right{flex-shrink:0;display:flex;align-items:center;gap:.5rem;padding-top:.3rem;flex-wrap:wrap;justify-content:flex-end;}
+
+  /* ── Buttons ── */
+  .btn{
+    appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+    padding:.6rem 1.1rem;border-radius:100px;font-size:.78rem;font-family:inherit;font-weight:400;
+    letter-spacing:.02em;cursor:pointer;white-space:nowrap;
+    transition:color .25s ease,border-color .25s ease,background .25s ease,transform .2s ease;
+    display:inline-flex;align-items:center;gap:.45rem;-webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{color:var(--fg);border-color:var(--line-strong);background:var(--surface-hover);}
+  .btn:active{transform:scale(.97);}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  .btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:500;}
+  .btn.primary:hover{background:var(--accent);border-color:var(--accent);color:var(--bg);}
+  .btn .arrow{display:inline-block;transition:transform .25s ease;font-size:.9em;}
+  .btn:hover .arrow{transform:translateX(2px);}
+  .btn-icon{width:38px;height:38px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:.9rem;}
+
+  /* ── Language switch ── */
+  .lang-switch{display:inline-flex;border:1px solid var(--line);border-radius:100px;background:var(--surface);overflow:hidden;}
+  .lang-btn{
+    appearance:none;border:none;background:transparent;color:var(--dim);
+    padding:.5rem .8rem;font-size:.7rem;font-family:inherit;font-weight:500;
+    letter-spacing:.1em;cursor:pointer;transition:color .25s ease,background .25s ease;
+    text-transform:uppercase;
+  }
+  .lang-btn:hover{color:var(--muted);}
+  .lang-btn.active{color:var(--accent);background:var(--accent-dim);}
+  .lang-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+
+  /* ── Toolbar ── */
+  .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;animation:fade-up .9s .1s cubic-bezier(.22,1,.36,1) both;}
+  .search-wrap{flex:1;min-width:200px;position:relative;}
+  .search-wrap svg{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--dim);pointer-events:none;transition:color .25s ease;}
+  .search-wrap:focus-within svg{color:var(--muted);}
+  .search{
+    width:100%;padding:.65rem .9rem .65rem 2.4rem;font-size:.82rem;font-family:inherit;font-weight:300;
+    color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:100px;
+    outline:none;transition:border-color .25s ease,background .25s ease;
+  }
+  .search::placeholder{color:var(--dim);}
+  .search:focus{border-color:var(--line-strong);background:var(--surface-hover);}
+  .filter-chips{display:flex;gap:.35rem;flex-wrap:wrap;}
+  .chip{
+    appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+    padding:.4rem .85rem;border-radius:100px;font-size:.7rem;font-family:inherit;font-weight:400;
+    letter-spacing:.04em;cursor:pointer;transition:all .25s ease;white-space:nowrap;
+  }
+  .chip:hover{color:var(--fg);border-color:var(--line-strong);}
+  .chip.active{background:var(--accent-dim);border-color:rgba(138,180,248,.3);color:var(--accent);}
+  .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* ── Stats ── */
+  .stats{
+    display:flex;align-items:center;justify-content:space-between;padding:0 .2rem;
+    font-size:.72rem;color:var(--dim);letter-spacing:.04em;
+    animation:fade-up .9s .15s cubic-bezier(.22,1,.36,1) both;
+  }
+  .stats-left{display:flex;align-items:center;gap:.5rem;}
+  .stats-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px rgba(138,180,248,.5);}
+
+  /* ── Grid ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;animation:fade-up .9s .2s cubic-bezier(.22,1,.36,1) both;}
+  @media (max-width:740px){.grid{grid-template-columns:1fr;}}
+
+  /* ── Card ── */
+  .card{
+    position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;cursor:pointer;
+    transition:border-color .35s ease,transform .35s ease,box-shadow .35s ease,background .35s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .card:hover{border-color:var(--line-strong);transform:translateY(-3px);box-shadow:0 16px 48px rgba(0,0,0,.45);background:var(--surface-hover);}
+  .card:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .card.open{transform:none;box-shadow:0 16px 48px rgba(0,0,0,.5);border-color:var(--line-strong);}
+  .card.hub{border-color:rgba(138,180,248,.14);}
+  .card.hub .card-name::after{
+    content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--accent);opacity:.55;margin-left:.45rem;vertical-align:middle;
+    box-shadow:0 0 8px rgba(138,180,248,.5);
+  }
+  .card-front{padding:1.4rem 1.5rem 1.3rem;display:flex;flex-direction:column;gap:.7rem;}
+  .card-flag{font-size:1.4rem;line-height:1;filter:grayscale(.3);transition:filter .35s ease,transform .35s ease;}
+  .card:hover .card-flag{filter:grayscale(0);transform:scale(1.08);}
+  .card-name{font-size:1.15rem;font-weight:300;letter-spacing:.01em;color:var(--fg);line-height:1.3;}
+  .card-country{font-size:.75rem;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+  .card-tagline{
+    font-size:.82rem;font-weight:300;color:var(--muted);line-height:1.6;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .card-meta{display:flex;align-items:center;gap:1rem;padding-top:.5rem;border-top:1px solid var(--line);margin-top:.2rem;}
+  .meta-item{display:flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--dim);letter-spacing:.03em;}
+  .meta-item svg{width:12px;height:12px;opacity:.6;}
+  .card-expand{
+    position:absolute;bottom:1rem;right:1.2rem;font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);transition:color .3s ease,transform .3s ease;
+    display:flex;align-items:center;gap:.3rem;
+  }
+  .card:hover .card-expand{color:var(--accent);transform:translateX(2px);}
+
+  /* ── Card detail ── */
+  .card-detail{max-height:0;overflow:hidden;opacity:0;transition:max-height .55s cubic-bezier(.22,1,.36,1),opacity .4s ease;}
+  .card.open .card-detail{max-height:1800px;opacity:1;}
+  .card-detail-inner{padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.2rem;}
+  .detail-divider{height:1px;background:var(--line);}
+
+  /* ── Tabs ── */
+  .tabs{display:flex;gap:.25rem;flex-wrap:wrap;padding:.2rem 0;}
+  .tab{
+    appearance:none;border:none;background:transparent;color:var(--dim);
+    padding:.45rem .8rem;border-radius:100px;font-size:.68rem;font-family:inherit;font-weight:400;
+    letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:color .25s ease,background .25s ease;white-space:nowrap;
+  }
+  .tab:hover{color:var(--muted);}
+  .tab.active{color:var(--accent);background:var(--accent-dim);}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .tab-panel{display:none;animation:panelIn .3s ease-out both;}
+  .tab-panel.active{display:block;}
+  @keyframes panelIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .panel-text{font-size:.84rem;font-weight:300;color:var(--muted);line-height:1.8;}
+
+  /* ── Facts ── */
+  .fact-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem .8rem;margin-top:.6rem;}
+  @media (max-width:500px){.fact-grid{grid-template-columns:1fr;}}
+  .fact{
+    display:flex;flex-direction:column;gap:.15rem;padding:.55rem .7rem;
+    background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:var(--radius-sm);
+  }
+  .fact-label{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  .fact-value{font-size:.82rem;font-weight:400;color:var(--fg);line-height:1.4;}
+
+  /* ── Highlights ── */
+  .highlight-list{display:flex;flex-direction:column;gap:.45rem;margin-top:.5rem;}
+  .highlight{display:flex;align-items:flex-start;gap:.6rem;font-size:.82rem;color:var(--muted);line-height:1.6;}
+  .highlight::before{content:"";width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.5;margin-top:.55rem;flex-shrink:0;}
+
+  /* ── Empty ── */
+  .empty{grid-column:1/-1;text-align:center;padding:4rem 2rem;color:var(--dim);font-size:.85rem;}
+  .empty svg{width:32px;height:32px;margin-bottom:1rem;opacity:.3;}
+
+  /* ── Footer ── */
+  .footer{
+    position:relative;z-index:1;width:100%;max-width:820px;margin-top:2rem;padding-top:1.5rem;
+    border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:.75rem;font-size:.68rem;color:var(--dim);letter-spacing:.06em;
+    animation:fade-up .9s .3s cubic-bezier(.22,1,.36,1) both;
+  }
+  .footer-links{display:flex;gap:1rem;}
+  .footer-links a{color:var(--dim);text-decoration:none;transition:color .25s ease;}
+  .footer-links a:hover{color:var(--muted);}
+
+  /* ── Toast ── */
+  .toast{
+    position:fixed;left:50%;bottom:2rem;transform:translate(-50%,12px);
+    background:rgba(20,20,24,.92);border:1px solid var(--line);color:var(--fg);
+    font-size:.76rem;padding:.6rem 1.2rem;border-radius:100px;opacity:0;pointer-events:none;
+    transition:opacity .3s ease,transform .3s ease;z-index:100;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    max-width:80vw;text-align:center;white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  @keyframes fade-up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+  @media (prefers-reduced-motion:reduce){
+    .light-field::before,.light-field::after,.header,.toolbar,.stats,.grid,.footer{animation:none;}
+    *{transition-duration:.01ms !important;}
+  }
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:10px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--dim);}
+</style>
+</head>
+<body>
+
+<div class="light-field" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <header class="header">
+    <div class="header-left">
+      <span class="mark">LN-LAB</span>
+      <h1 id="pageTitle"></h1>
+      <p class="header-sub" id="pageSub"></p>
+    </div>
+    <div class="header-right">
+      <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+        <button class="lang-btn active" data-lang="en" type="button">EN</button>
+        <button class="lang-btn" data-lang="fr" type="button">FR</button>
+        <button class="lang-btn" data-lang="zh" type="button">中</button>
+      </div>
+      <button class="btn primary" id="randomBtn" type="button">
+        <span data-i18n="random"></span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="btn btn-icon" id="shuffleBtn" type="button" data-i18n-title="clearFilters" aria-label="Clear filters">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+          <line x1="4" y1="4" x2="9" y2="9"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input class="search" type="text" id="searchInput" autocomplete="off">
+    </div>
+    <div class="filter-chips" id="filterChips">
+      <button class="chip active" data-filter="all" type="button" data-i18n="filterAll"></button>
+      <button class="chip" data-filter="europe" type="button" data-i18n="filterEurope"></button>
+      <button class="chip" data-filter="americas" type="button" data-i18n="filterAmericas"></button>
+      <button class="chip" data-filter="hub" type="button" data-i18n="filterHub"></button>
+      <button class="chip" data-filter="tier1" type="button" data-i18n="filterTier1"></button>
+      <button class="chip" data-filter="tier2" type="button" data-i18n="filterTier2"></button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stats-left">
+      <span class="stats-dot" aria-hidden="true"></span>
+      <span id="statsText"></span>
+    </div>
+    <span id="statsHint"></span>
+  </div>
+
+  <div class="grid" id="grid" role="list" aria-label="City cards"></div>
+
+</div>
+
+<footer class="footer">
+  <span>© <span id="year"></span> LN-LAB · Enjoy Life. Explore the World.</span>
+  <span class="footer-links">
+    <a href="https://ln-lab.github.io/" target="_blank" rel="noopener noreferrer">LN-LAB</a>
+    <a href="https://slcleo-usa.github.io" target="_blank" rel="noopener noreferrer" id="contactLink">Contact</a>
+  </span>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   TRANSLATIONS — UI strings
+   ═══════════════════════════════════════════════════════════════ */
+
+var I18N = {
+  en: {
+    pageTitle: 'Explorer',
+    pageTitleSub: 'Cities of Europe & the Americas',
+    pageSub: 'A random walk through the great cities — their culture, economy, geography, and history. Economic hubs are slightly more likely to appear.',
+    random: 'Random',
+    clearFilters: 'Clear filters',
+    searchPlaceholder: 'Search cities, countries, or keywords…',
+    filterAll: 'All',
+    filterEurope: 'Europe',
+    filterAmericas: 'Americas',
+    filterHub: 'Hubs',
+    filterTier1: 'Tier 1',
+    filterTier2: 'Tier 2',
+    statsOf: '{shown} of {total} cities',
+    hintExpand: 'Click a card to expand',
+    hintExploring: 'Exploring {name}',
+    tabHistory: 'History',
+    tabCulture: 'Culture',
+    tabEconomy: 'Economy',
+    tabGeography: 'Geography',
+    factFounded: 'Founded',
+    factPopulation: 'Population',
+    factArea: 'Area',
+    factLanguage: 'Language',
+    factGdp: 'GDP (metro)',
+    factCurrency: 'Currency',
+    factCoordinates: 'Coordinates',
+    factRegion: 'Region',
+    regionEurope: 'Europe',
+    regionAmericas: 'Americas',
+    explore: 'Explore',
+    tier1: 'Tier 1',
+    tier2: 'Tier 2',
+    empty: 'No cities match your search.',
+    toastNoCities: 'No cities to pick from',
+    toastExploring: 'Exploring {name}, {country}',
+    toastHub: ' · hub',
+    toastCleared: 'Filters cleared',
+    currencyEurope: 'Local / EUR',
+    currencyAmericas: 'Local / USD',
+    contact: 'Contact'
+  },
+  fr: {
+    pageTitle: 'Explorateur',
+    pageTitleSub: 'Villes d’Europe et des Amériques',
+    pageSub: 'Une promenade aléatoire à travers les grandes villes — leur culture, leur économie, leur géographie et leur histoire. Les pôles économiques sont légèrement plus susceptibles d’apparaître.',
+    random: 'Aléatoire',
+    clearFilters: 'Effacer les filtres',
+    searchPlaceholder: 'Rechercher des villes, pays ou mots-clés…',
+    filterAll: 'Tout',
+    filterEurope: 'Europe',
+    filterAmericas: 'Amériques',
+    filterHub: 'Pôles',
+    filterTier1: 'Niveau 1',
+    filterTier2: 'Niveau 2',
+    statsOf: '{shown} sur {total} villes',
+    hintExpand: 'Cliquez sur une carte pour développer',
+    hintExploring: 'Exploration de {name}',
+    tabHistory: 'Histoire',
+    tabCulture: 'Culture',
+    tabEconomy: 'Économie',
+    tabGeography: 'Géographie',
+    factFounded: 'Fondation',
+    factPopulation: 'Population',
+    factArea: 'Superficie',
+    factLanguage: 'Langue',
+    factGdp: 'PIB (métropole)',
+    factCurrency: 'Monnaie',
+    factCoordinates: 'Coordonnées',
+    factRegion: 'Région',
+    regionEurope: 'Europe',
+    regionAmericas: 'Amériques',
+    explore: 'Explorer',
+    tier1: 'Niveau 1',
+    tier2: 'Niveau 2',
+    empty: 'Aucune ville ne correspond à votre recherche.',
+    toastNoCities: 'Aucune ville à sélectionner',
+    toastExploring: 'Exploration de {name}, {country}',
+    toastHub: ' · pôle',
+    toastCleared: 'Filtres effacés',
+    currencyEurope: 'Locale / EUR',
+    currencyAmericas: 'Locale / USD',
+    contact: 'Contact'
+  },
+  zh: {
+    pageTitle: '探索者',
+    pageTitleSub: '欧洲与美洲城市',
+    pageSub: '漫步于世界名城之间——文化、经济、地理与历史。经济中心城市被抽中的概率会略高一些。',
+    random: '随机',
+    clearFilters: '清除筛选',
+    searchPlaceholder: '搜索城市、国家或关键词…',
+    filterAll: '全部',
+    filterEurope: '欧洲',
+    filterAmericas: '美洲',
+    filterHub: '经济中心',
+    filterTier1: '一线',
+    filterTier2: '二线',
+    statsOf: '共 {total} 座城市，显示 {shown} 座',
+    hintExpand: '点击卡片展开详情',
+    hintExploring: '正在探索 {name}',
+    tabHistory: '历史',
+    tabCulture: '文化',
+    tabEconomy: '经济',
+    tabGeography: '地理',
+    factFounded: '建城',
+    factPopulation: '人口',
+    factArea: '面积',
+    factLanguage: '语言',
+    factGdp: 'GDP（都会区）',
+    factCurrency: '货币',
+    factCoordinates: '坐标',
+    factRegion: '地区',
+    regionEurope: '欧洲',
+    regionAmericas: '美洲',
+    explore: '探索',
+    tier1: '一线',
+    tier2: '二线',
+    empty: '没有匹配的城市。',
+    toastNoCities: '没有可抽取的城市',
+    toastExploring: '正在探索 {name}，{country}',
+    toastHub: ' · 经济中心',
+    toastCleared: '筛选已清除',
+    currencyEurope: '当地货币 / 欧元',
+    currencyAmericas: '当地货币 / 美元',
+    contact: '联系我们'
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   CITY DATA — 38 cities, trilingual
+
+   weight controls the random-draw probability:
+     3.0 → global command cities
+     2.5 → major economic hubs
+     2.0 → tier-1 / strong regional hubs
+     1.5 → established tier-2 cities
+     1.2 → smaller cultural cities
+   ═══════════════════════════════════════════════════════════════ */
+
+var CITIES = [
+
+/* ══════════════ GLOBAL COMMAND CITIES ══════════════ */
+{
+  id:'london', flag:'🇬🇧', region:'europe', tier:1, weight:3.0,
+  coords:'51.5074° N, 0.1278° W', population:'9.0M', area:'1,572 km²', gdp:'$860B',
+  en:{
+    name:'London', country:'United Kingdom',
+    tagline:'A global capital of finance, culture, and empire-worn history.',
+    founded:'~43 AD (Roman Londinium)', language:'English',
+    history:'Founded by the Romans as Londinium on the Thames. Survived plague, the Great Fire of 1666, and the Blitz. Once the heart of a global empire, now a post-imperial capital of finance and soft power.',
+    culture:'A layered cultural landscape — the West End, the National Gallery, Tate Modern, and a music scene that gave the world the Beatles, punk, and grime. Over 300 languages are spoken here.',
+    economy:'One of the world’s two largest financial centres, alongside New York. The City of London hosts the Bank of England, the LSE, and a dense cluster of global banks, insurers, and law firms.',
+    geography:'Sprawls along the tidal Thames in southeast England. A low-lying basin ringed by gentle hills, prone to flooding and increasingly to heatwaves.',
+    highlights:['Big Ben & the Palace of Westminster','The British Museum','Tate Modern','Camden Market','Greenwich Observatory']
+  },
+  fr:{
+    name:'Londres', country:'Royaume-Uni',
+    tagline:'Une capitale mondiale de la finance, de la culture et d’une histoire marquée par l’empire.',
+    founded:'~43 apr. J.-C. (Londinium romain)', language:'Anglais',
+    history:'Fondée par les Romains sous le nom de Londinium sur la Tamise. Elle a survécu à la peste, au Grand Incendie de 1666 et au Blitz. Autrefois cœur d’un empire mondial, elle est aujourd’hui une capitale post-impériale de la finance et du soft power.',
+    culture:'Un paysage culturel à multiples couches — le West End, la National Gallery, Tate Modern, et une scène musicale qui a donné au monde les Beatles, le punk et le grime. Plus de 300 langues y sont parlées.',
+    economy:'L’un des deux plus grands centres financiers mondiaux, avec New York. La City abrite la Banque d’Angleterre, la LSE et un dense réseau de banques, assureurs et cabinets juridiques internationaux.',
+    geography:'S’étend le long de la Tamise dans le sud-est de l’Angleterre. Un bassin bas entouré de collines douces, sujet aux inondations et de plus en plus aux canicules.',
+    highlights:['Big Ben et le Parlement','Le British Museum','Tate Modern','Camden Market','Observatoire de Greenwich']
+  },
+  zh:{
+    name:'伦敦', country:'英国',
+    tagline:'全球金融与文化之都，帝国余晖下的历史名城。',
+    founded:'约公元 43 年（罗马时期伦蒂尼恩）', language:'英语',
+    history:'由罗马人在泰晤士河畔建立，名为伦蒂尼恩。历经瘟疫、1666 年大火与二战轰炸。曾是全球帝国的中心，如今是后帝国时代的金融与软实力之都。',
+    culture:'文化层次丰富——西区剧院、国家美术馆、泰特现代美术馆，以及孕育了披头士、朋克与格莱姆的音乐场景。这里使用超过 300 种语言。',
+    economy:'与纽约并列全球两大金融中心。伦敦金融城聚集了英格兰银行、伦敦政经学院，以及众多国际银行、保险公司与律所。',
+    geography:'沿泰晤士河在英格兰东南部铺展。地势低洼，四周环绕缓丘，易受洪水与热浪影响。',
+    highlights:['大本钟与威斯敏斯特宫','大英博物馆','泰特现代美术馆','卡姆登市场','格林尼治天文台']
+  }
+},
+{
+  id:'paris', flag:'🇫🇷', region:'europe', tier:1, weight:3.0,
+  coords:'48.8566° N, 2.3522° E', population:'2.1M / 11M (metro)', area:'105 km²', gdp:'$760B',
+  en:{
+    name:'Paris', country:'France',
+    tagline:'The city of light, art, and the quiet authority of taste.',
+    founded:'~250 BC (Parisii settlement)', language:'French',
+    history:'From a Celtic fishing village to the capital of the Franks, then the seat of revolution and empire. Haussmann rebuilt the city in the 19th century into the boulevard-lined city we recognise today.',
+    culture:'Home to the Louvre, Musée d’Orsay, and a literary café culture that shaped modernism. Fashion, cinema, and philosophy are woven into daily life.',
+    economy:'A global hub for luxury goods (LVMH, Kering), finance, tourism, and tech. La Défense is one of Europe’s largest business districts.',
+    geography:'Sits in a basin on the Seine, with the gentle hills of Montmartre and the Bois de Boulogne framing a compact, walkable centre.',
+    highlights:['The Louvre','Eiffel Tower','Musée d’Orsay','Montmartre','Le Marais']
+  },
+  fr:{
+    name:'Paris', country:'France',
+    tagline:'La ville lumière, l’art, et l’autorité discrète du bon goût.',
+    founded:'~250 av. J.-C. (village parisii)', language:'Français',
+    history:'D’un village de pêcheurs celtes à la capitale des Francs, puis au siège de la Révolution et de l’Empire. Haussmann a reconstruit la ville au XIXe siècle en boulevards, tels que nous les connaissons aujourd’hui.',
+    culture:'Le Louvre, le musée d’Orsay, et une culture de café littéraire qui a façonné le modernisme. Mode, cinéma et philosophie sont tissés dans la vie quotidienne.',
+    economy:'Un pôle mondial du luxe (LVMH, Kering), de la finance, du tourisme et de la tech. La Défense est l’un des plus grands quartiers d’affaires d’Europe.',
+    geography:'Dans un bassin sur la Seine, avec les collines douces de Montmartre et le bois de Boulogne encadrant un centre compact et piéton.',
+    highlights:['Le Louvre','Tour Eiffel','Musée d’Orsay','Montmartre','Le Marais']
+  },
+  zh:{
+    name:'巴黎', country:'法国',
+    tagline:'光之城，艺术与品味之都。',
+    founded:'约公元前 250 年（巴黎西人聚落）', language:'法语',
+    history:'从凯尔特渔村到法兰克王国首都，再到革命与帝国的中心。19 世纪奥斯曼男爵重建了这座林荫大道纵横的城市。',
+    culture:'卢浮宫、奥赛博物馆的所在地，文学咖啡馆文化塑造了现代主义。时尚、电影与哲学融入日常生活。',
+    economy:'全球奢侈品（LVMH、开云）、金融、旅游与科技中心。拉德芳斯是欧洲最大的商务区之一。',
+    geography:'位于塞纳河盆地，蒙马特高地与布洛涅森林环绕着紧凑而适合步行的市中心。',
+    highlights:['卢浮宫','埃菲尔铁塔','奥赛博物馆','蒙马特','玛黑区']
+  }
+},
+{
+  id:'newyork', flag:'🇺🇸', region:'americas', tier:1, weight:3.0,
+  coords:'40.7128° N, 74.0060° W', population:'8.3M', area:'783 km²', gdp:'$1.7T',
+  en:{
+    name:'New York', country:'United States',
+    tagline:'The city that never sleeps — finance, art, and the immigrant dream.',
+    founded:'1624 (New Amsterdam)', language:'English',
+    history:'A Dutch trading post that became a British colony, then the gateway for millions of European immigrants. From Ellis Island to Wall Street, the city is a monument to reinvention.',
+    culture:'Broadway, MoMA, the Met, jazz, hip-hop, and a skyline that has become shorthand for modernity itself. Over 800 languages are spoken in its five boroughs.',
+    economy:'The world’s largest financial centre. Wall Street, Silicon Alley, media, and real estate form an economy larger than most countries.',
+    geography:'A dense archipelago at the mouth of the Hudson River, with Manhattan as its granite spine and five boroughs spreading across islands and mainland.',
+    highlights:['Central Park','The Met','Brooklyn Bridge','High Line','One World Observatory']
+  },
+  fr:{
+    name:'New York', country:'États-Unis',
+    tagline:'La ville qui ne dort jamais — finance, art et rêve d’immigrant.',
+    founded:'1624 (La Nouvelle-Amsterdam)', language:'Anglais',
+    history:'Un poste de traite hollandais devenu colonie britannique, puis la porte d’entrée de millions d’immigrants européens. D’Ellis Island à Wall Street, la ville est un monument à la réinvention.',
+    culture:'Broadway, le MoMA, le Met, le jazz, le hip-hop, et une skyline devenue le raccourci de la modernité elle-même. Plus de 800 langues sont parlées dans ses cinq arrondissements.',
+    economy:'Le plus grand centre financier mondial. Wall Street, Silicon Alley, les médias et l’immobilier forment une économie plus grande que la plupart des pays.',
+    geography:'Un archipel dense à l’embouchure de l’Hudson, avec Manhattan comme colonne vertébrale granitique et cinq arrondissements répartis sur îles et continent.',
+    highlights:['Central Park','Le Met','Pont de Brooklyn','High Line','One World Observatory']
+  },
+  zh:{
+    name:'纽约', country:'美国',
+    tagline:'不眠之城——金融、艺术与移民梦想。',
+    founded:'1624 年（新阿姆斯特丹）', language:'英语',
+    history:'从荷兰贸易站到英国殖民地，再到数百万欧洲移民的门户。从埃利斯岛到华尔街，这座城市是不断重塑自我的象征。',
+    culture:'百老汇、现代艺术博物馆、大都会博物馆、爵士乐、嘻哈，以及已成为现代性代名词的天际线。五个行政区使用超过 800 种语言。',
+    economy:'全球最大的金融中心。华尔街、硅巷、媒体与房地产构成的经济体量超过大多数国家。',
+    geography:'位于哈德逊河口的密集群岛，曼哈顿是花岗岩脊梁，五个行政区分布在岛屿与大陆之上。',
+    highlights:['中央公园','大都会博物馆','布鲁克林大桥','高线公园','世贸中心一号观景台']
+  }
+},
+
+/* ══════════════ MAJOR ECONOMIC HUBS ══════════════ */
+{
+  id:'frankfurt', flag:'🇩🇪', region:'europe', tier:2, weight:2.5,
+  coords:'50.1109° N, 8.6821° E', population:'780K', area:'248 km²', gdp:'$180B',
+  en:{
+    name:'Frankfurt', country:'Germany',
+    tagline:'Germany’s financial skyscraper city — and Goethe’s birthplace.',
+    founded:'~1st century AD (Roman settlement)', language:'German',
+    history:'A free imperial city that became the coronation site of Holy Roman Emperors, then a banking centre after WWII.',
+    culture:'Goethe’s birthplace, the Städel Museum, and a skyline nicknamed “Mainhattan”. The Frankfurt Book Fair is the world’s largest.',
+    economy:'The European Central Bank, the Frankfurt Stock Exchange, and a dense cluster of banks and consultancies. Continental Europe’s financial capital.',
+    geography:'On the Main River in central Germany, with the Taunus hills to the north.',
+    highlights:['Römerberg','Städel Museum','Main Tower','Palmengarten','Goethe House']
+  },
+  fr:{
+    name:'Francfort', country:'Allemagne',
+    tagline:'La ville des gratte-ciel financiers allemands — et le berceau de Goethe.',
+    founded:'~Ier siècle apr. J.-C. (établissement romain)', language:'Allemand',
+    history:'Une ville libre impériale devenue lieu de couronnement des empereurs du Saint-Empire, puis centre bancaire après la Seconde Guerre mondiale.',
+    culture:'Le berceau de Goethe, le musée Städel, et une skyline surnommée « Mainhattan ». La Foire du livre de Francfort est la plus grande du monde.',
+    economy:'La Banque centrale européenne, la Bourse de Francfort, et un dense réseau de banques et de cabinets de conseil. La capitale financière de l’Europe continentale.',
+    geography:'Sur le Main, au centre de l’Allemagne, avec les collines du Taunus au nord.',
+    highlights:['Römerberg','Musée Städel','Main Tower','Palmengarten','Maison de Goethe']
+  },
+  zh:{
+    name:'法兰克福', country:'德国',
+    tagline:'德国的金融摩天之城，也是歌德的出生地。',
+    founded:'约公元 1 世纪（罗马聚落）', language:'德语',
+    history:'从自由帝国城市到神圣罗马帝国皇帝的加冕地，二战后成为银行业中心。',
+    culture:'歌德出生地、施泰德博物馆，以及被昵称为“美茵哈顿”的天际线。法兰克福书展是全球规模最大的书展。',
+    economy:'欧洲央行、法兰克福证券交易所，以及密集的银行与咨询机构。欧洲大陆的金融之都。',
+    geography:'位于德国中部的美茵河畔，北临陶努斯山丘。',
+    highlights:['罗马广场','施泰德博物馆','美茵塔','棕榈园','歌德故居']
+  }
+},
+{
+  id:'zurich', flag:'🇨🇭', region:'europe', tier:2, weight:2.5,
+  coords:'47.3769° N, 8.5417° E', population:'430K', area:'88 km²', gdp:'$150B',
+  en:{
+    name:'Zurich', country:'Switzerland',
+    tagline:'Switzerland’s quiet powerhouse — banking, lakes, and precision.',
+    founded:'~15 BC (Roman Turicum)', language:'German / Swiss German',
+    history:'A Roman toll station that became a Reformation centre (Zwingli) and later a global banking hub.',
+    culture:'The Kunsthaus, Dadaism’s birthplace (Cabaret Voltaire), and a lake culture of swimming, sailing, and café life.',
+    economy:'One of the world’s largest financial centres. Banking, insurance, and a growing tech scene (Google’s largest European engineering office).',
+    geography:'At the northern tip of Lake Zurich, surrounded by hills and the Limmat River.',
+    highlights:['Lake Zurich','Old Town (Altstadt)','Kunsthaus','Bahnhofstrasse','Uetliberg']
+  },
+  fr:{
+    name:'Zurich', country:'Suisse',
+    tagline:'La puissance discrète de la Suisse — banques, lac et précision.',
+    founded:'~15 av. J.-C. (Turicum romain)', language:'Allemand / Suisse allemand',
+    history:'Un poste de péage romain devenu centre de la Réforme (Zwingli), puis un pôle bancaire mondial.',
+    culture:'Le Kunsthaus, le berceau du dadaïsme (Cabaret Voltaire), et une culture lacustre de baignade, de voile et de cafés.',
+    economy:'L’un des plus grands centres financiers mondiaux. Banque, assurance et une scène tech en pleine croissance (le plus grand bureau d’ingénierie européen de Google).',
+    geography:'À l’extrémité nord du lac de Zurich, entouré de collines et de la Limmat.',
+    highlights:['Lac de Zurich','Vieille ville (Altstadt)','Kunsthaus','Bahnhofstrasse','Uetliberg']
+  },
+  zh:{
+    name:'苏黎世', country:'瑞士',
+    tagline:'瑞士低调的实力之城——银行、湖泊与精密。',
+    founded:'约公元前 15 年（罗马图里库姆）', language:'德语 / 瑞士德语',
+    history:'从罗马征税站到宗教改革中心（茨温利），后发展为全球银行中心。',
+    culture:'美术馆、达达主义诞生地（伏尔泰酒馆），以及游泳、帆船与咖啡馆交织的湖畔生活。',
+    economy:'全球最大的金融中心之一。银行、保险与不断壮大的科技产业（谷歌在欧洲最大的工程办公室）。',
+    geography:'位于苏黎世湖北端，四周环绕山丘与利马特河。',
+    highlights:['苏黎世湖','老城（Altstadt）','美术馆','班霍夫大街','于特利贝格山']
+  }
+},
+{
+  id:'losangeles', flag:'🇺🇸', region:'americas', tier:1, weight:2.5,
+  coords:'34.0522° N, 118.2437° W', population:'3.9M', area:'1,302 km²', gdp:'$1.0T',
+  en:{
+    name:'Los Angeles', country:'United States',
+    tagline:'Dreams, sun, and the global capital of entertainment.',
+    founded:'1781 (El Pueblo de la Reina de los Ángeles)', language:'English / Spanish',
+    history:'A Spanish mission town that became a Mexican pueblo, then an American boomtown driven by oil, film, and immigration.',
+    culture:'Hollywood, the Lakers, and a sprawling, car-driven mosaic of neighbourhoods. Over 200 languages are spoken here.',
+    economy:'Entertainment (film, TV, music), tech (Silicon Beach), aerospace, and international trade via the Port of LA.',
+    geography:'A vast basin between the Pacific Ocean and the San Gabriel Mountains, prone to earthquakes and wildfires.',
+    highlights:['Hollywood Sign','Griffith Observatory','Santa Monica Pier','The Getty','Venice Beach']
+  },
+  fr:{
+    name:'Los Angeles', country:'États-Unis',
+    tagline:'Rêves, soleil, et capitale mondiale du divertissement.',
+    founded:'1781 (El Pueblo de la Reina de los Ángeles)', language:'Anglais / Espagnol',
+    history:'Une mission espagnole devenue pueblo mexicain, puis une ville en plein essor portée par le pétrole, le cinéma et l’immigration.',
+    culture:'Hollywood, les Lakers, et une mosaïque tentaculaire de quartiers dominée par l’automobile. Plus de 200 langues y sont parlées.',
+    economy:'Divertissement (cinéma, télévision, musique), tech (Silicon Beach), aérospatiale et commerce international via le port de Los Angeles.',
+    geography:'Un vaste bassin entre l’océan Pacifique et les monts San Gabriel, sujet aux séismes et aux incendies.',
+    highlights:['Panneau Hollywood','Observatoire Griffith','Jetée de Santa Monica','Le Getty','Venice Beach']
+  },
+  zh:{
+    name:'洛杉矶', country:'美国',
+    tagline:'梦想、阳光，全球娱乐之都。',
+    founded:'1781 年（天使女王镇）', language:'英语 / 西班牙语',
+    history:'从西班牙传教站到墨西哥村镇，再因石油、电影与移民而崛起的美国新兴城市。',
+    culture:'好莱坞、湖人队，以及以汽车为纽带、连绵铺展的街区拼图。这里使用超过 200 种语言。',
+    economy:'娱乐业（电影、电视、音乐）、科技（硅滩）、航空航天，以及通过洛杉矶港的国际贸易。',
+    geography:'位于太平洋与圣加布里埃尔山之间的广阔盆地，易受地震与山火影响。',
+    highlights:['好莱坞标志','格里菲斯天文台','圣莫尼卡码头','盖蒂中心','威尼斯海滩']
+  }
+},
+{
+  id:'chicago', flag:'🇺🇸', region:'americas', tier:1, weight:2.5,
+  coords:'41.8781° N, 87.6298° W', population:'2.7M', area:'606 km²', gdp:'$700B',
+  en:{
+    name:'Chicago', country:'United States',
+    tagline:'The windy city — architecture, blues, and deep-dish pizza.',
+    founded:'1833', language:'English',
+    history:'A trading post that became a railroad hub, then a skyscraper pioneer after the Great Fire of 1871.',
+    culture:'The birthplace of the skyscraper (Home Insurance Building), the blues, and modern improv comedy (Second City).',
+    economy:'Finance (CBOE, CME), logistics, manufacturing, and a growing tech sector. The largest futures exchange in the world.',
+    geography:'On the southwestern shore of Lake Michigan, a flat city with a grid of streets and a river cutting through.',
+    highlights:['Millennium Park','Art Institute of Chicago','Magnificent Mile','Navy Pier','Wrigley Field']
+  },
+  fr:{
+    name:'Chicago', country:'États-Unis',
+    tagline:'La ville des vents — architecture, blues et pizza deep-dish.',
+    founded:'1833', language:'Anglais',
+    history:'Un poste de traite devenu carrefour ferroviaire, puis pionnier du gratte-ciel après le Grand Incendie de 1871.',
+    culture:'Le berceau du gratte-ciel (Home Insurance Building), du blues et de l’improvisation moderne (Second City).',
+    economy:'Finance (CBOE, CME), logistique, industrie et un secteur tech en croissance. La plus grande bourse de produits dérivés au monde.',
+    geography:'Sur la rive sud-ouest du lac Michigan, une ville plate quadrillée par un réseau de rues et traversée par une rivière.',
+    highlights:['Millennium Park','Art Institute of Chicago','Magnificent Mile','Navy Pier','Wrigley Field']
+  },
+  zh:{
+    name:'芝加哥', country:'美国',
+    tagline:'风之城——建筑、蓝调与深盘披萨。',
+    founded:'1833 年', language:'英语',
+    history:'从贸易站到铁路枢纽，1871 年大火后成为摩天大楼的先驱。',
+    culture:'摩天大楼（家庭保险大楼）、蓝调音乐与现代即兴喜剧（第二城）的诞生地。',
+    economy:'金融（芝加哥期权交易所、芝加哥商品交易所）、物流、制造业与不断壮大的科技产业。全球最大的期货交易所。',
+    geography:'位于密歇根湖西南岸，街道呈网格状，河流穿城而过。',
+    highlights:['千禧公园','芝加哥艺术博物馆','华丽一英里','海军码头','瑞格利球场']
+  }
+},
+{
+  id:'sanfrancisco', flag:'🇺🇸', region:'americas', tier:1, weight:2.5,
+  coords:'37.7749° N, 122.4194° W', population:'870K', area:'121 km²', gdp:'$500B',
+  en:{
+    name:'San Francisco', country:'United States',
+    tagline:'Gold Rush, fog, and the global hub of tech innovation.',
+    founded:'1776 (Mission San Francisco de Asís)', language:'English',
+    history:'A Spanish mission, then a Gold Rush boomtown, then the birthplace of the Beat Generation and the Summer of Love.',
+    culture:'The Golden Gate Bridge, cable cars, and a progressive, diverse culture. Home to the world’s largest Chinatown outside Asia.',
+    economy:'Tech (Silicon Valley’s urban core), finance, and biotech. The Bay Area is the world’s top startup ecosystem.',
+    geography:'A hilly peninsula between the Pacific and San Francisco Bay, famous for its fog (Karl the Fog).',
+    highlights:['Golden Gate Bridge','Alcatraz','Fisherman’s Wharf','Mission District','Twin Peaks']
+  },
+  fr:{
+    name:'San Francisco', country:'États-Unis',
+    tagline:'Ruée vers l’or, brouillard, et pôle mondial de l’innovation tech.',
+    founded:'1776 (Mission San Francisco de Asís)', language:'Anglais',
+    history:'Une mission espagnole, puis une ville champignon de la ruée vers l’or, puis le berceau de la Beat Generation et du Summer of Love.',
+    culture:'Le Golden Gate Bridge, les cable cars, et une culture progressiste et diverse. Le plus grand Chinatown du monde hors d’Asie.',
+    economy:'Tech (cœur urbain de la Silicon Valley), finance et biotech. La Bay Area est le premier écosystème de startups au monde.',
+    geography:'Une péninsule vallonnée entre le Pacifique et la baie de San Francisco, célèbre pour son brouillard.',
+    highlights:['Golden Gate Bridge','Alcatraz','Fisherman’s Wharf','Mission District','Twin Peaks']
+  },
+  zh:{
+    name:'旧金山', country:'美国',
+    tagline:'淘金热、雾城，全球科技创新中心。',
+    founded:'1776 年（圣方济各传教站）', language:'英语',
+    history:'从西班牙传教站到淘金热新兴城市，再到垮掉的一代与爱之夏的诞生地。',
+    culture:'金门大桥、缆车，以及进步多元的文化。拥有亚洲以外全球最大的唐人街。',
+    economy:'科技（硅谷的城市核心）、金融与生物科技。湾区是全球顶尖的创业生态。',
+    geography:'位于太平洋与旧金山湾之间的多山半岛，以雾闻名。',
+    highlights:['金门大桥','恶魔岛','渔人码头','教会区','双峰山']
+  }
+},
+{
+  id:'toronto', flag:'🇨🇦', region:'americas', tier:1, weight:2.5,
+  coords:'43.6532° N, 79.3832° W', population:'2.9M', area:'630 km²', gdp:'$450B',
+  en:{
+    name:'Toronto', country:'Canada',
+    tagline:'Canada’s multicultural powerhouse — finance, film, and food.',
+    founded:'1793 (York)', language:'English',
+    history:'A British garrison town that became the capital of Upper Canada, then the economic engine of Ontario.',
+    culture:'One of the most diverse cities on Earth — over half of residents were born outside Canada. The TIFF film festival is a major cultural event.',
+    economy:'Finance (Bay Street), tech, film production, and real estate. The TSX is the world’s third-largest exchange by market cap.',
+    geography:'On the northwestern shore of Lake Ontario, with a ravine system and the Toronto Islands.',
+    highlights:['CN Tower','Royal Ontario Museum','Distillery District','Kensington Market','Toronto Islands']
+  },
+  fr:{
+    name:'Toronto', country:'Canada',
+    tagline:'La puissance multiculturelle du Canada — finance, cinéma et gastronomie.',
+    founded:'1793 (York)', language:'Anglais',
+    history:'Une ville de garnison britannique devenue capitale du Haut-Canada, puis moteur économique de l’Ontario.',
+    culture:'L’une des villes les plus diverses au monde — plus de la moitié des habitants sont nés hors du Canada. Le festival du film TIFF est un événement culturel majeur.',
+    economy:'Finance (Bay Street), tech, production cinématographique et immobilier. Le TSX est la troisième bourse mondiale par capitalisation.',
+    geography:'Sur la rive nord-ouest du lac Ontario, avec un réseau de ravins et les îles de Toronto.',
+    highlights:['Tour CN','Musée royal de l’Ontario','Distillery District','Kensington Market','Îles de Toronto']
+  },
+  zh:{
+    name:'多伦多', country:'加拿大',
+    tagline:'加拿大的多元文化重镇——金融、电影与美食。',
+    founded:'1793 年（约克）', language:'英语',
+    history:'从英国驻防城镇到上加拿大首府，再到安大略的经济引擎。',
+    culture:'全球最多元的城市之一——超过一半居民在加拿大境外出生。多伦多国际电影节是重要的文化盛事。',
+    economy:'金融（贝街）、科技、电影制作与房地产。多伦多证券交易所市值全球第三。',
+    geography:'位于安大略湖西北岸，拥有峡谷系统与多伦多群岛。',
+    highlights:['CN 塔','皇家安大略博物馆','酿酒厂区','肯辛顿市场','多伦多群岛']
+  }
+},
+{
+  id:'seattle', flag:'🇺🇸', region:'americas', tier:2, weight:2.5,
+  coords:'47.6062° N, 122.3321° W', population:'750K', area:'217 km²', gdp:'$350B',
+  en:{
+    name:'Seattle', country:'United States',
+    tagline:'Coffee, rain, and the cloud-computing capital of the world.',
+    founded:'1851', language:'English',
+    history:'A lumber town that became a Boeing company town, then the home of Microsoft and Amazon.',
+    culture:'Grunge music (Nirvana, Pearl Jam), the Space Needle, and a strong coffee culture (Starbucks started here).',
+    economy:'Tech (Amazon, Microsoft), aerospace (Boeing), and a growing biotech sector. One of the wealthiest metros in the US.',
+    geography:'On Puget Sound, between the Olympic Mountains and the Cascade Range, with Mount Rainier looming to the south.',
+    highlights:['Space Needle','Pike Place Market','Chihuly Garden and Glass','Kerry Park','Museum of Pop Culture']
+  },
+  fr:{
+    name:'Seattle', country:'États-Unis',
+    tagline:'Café, pluie, et capitale mondiale du cloud.',
+    founded:'1851', language:'Anglais',
+    history:'Une ville forestière devenue ville de compagnie pour Boeing, puis le foyer de Microsoft et Amazon.',
+    culture:'Le grunge (Nirvana, Pearl Jam), la Space Needle, et une forte culture du café (Starbucks y est né).',
+    economy:'Tech (Amazon, Microsoft), aérospatiale (Boeing) et un secteur biotech en croissance. L’une des métropoles les plus riches des États-Unis.',
+    geography:'Sur le Puget Sound, entre les monts Olympic et la chaîne des Cascades, avec le mont Rainier au sud.',
+    highlights:['Space Needle','Pike Place Market','Chihuly Garden and Glass','Kerry Park','Museum of Pop Culture']
+  },
+  zh:{
+    name:'西雅图', country:'美国',
+    tagline:'咖啡、雨，全球云计算之都。',
+    founded:'1851 年', language:'英语',
+    history:'从伐木小镇到波音公司城，再到微软与亚马逊的总部所在地。',
+    culture:'垃圾摇滚（涅槃乐队、珍珠果酱）、太空针塔，以及浓厚的咖啡文化（星巴克在此创立）。',
+    economy:'科技（亚马逊、微软）、航空航天（波音）与不断壮大的生物科技产业。美国最富裕的都会区之一。',
+    geography:'位于普吉特海湾，介于奥林匹克山与喀斯喀特山脉之间，南望雷尼尔山。',
+    highlights:['太空针塔','派克市场','奇胡利玻璃艺术园','凯瑞公园','流行文化博物馆']
+  }
+},
+{
+  id:'mexicocity', flag:'🇲🇽', region:'americas', tier:1, weight:2.5,
+  coords:'19.4326° N, 99.1332° W', population:'9.2M', area:'1,485 km²', gdp:'$400B',
+  en:{
+    name:'Mexico City', country:'Mexico',
+    tagline:'A megacity on a lake — Aztec ruins, murals, and tacos.',
+    founded:'1325 (Tenochtitlan)', language:'Spanish',
+    history:'Built by the Aztecs on an island in Lake Texcoco, destroyed by Cortés, rebuilt as the capital of New Spain.',
+    culture:'Frida Kahlo’s Blue House, Diego Rivera’s murals, and a food scene that is a UNESCO Intangible Cultural Heritage.',
+    economy:'The economic engine of Mexico — finance, manufacturing, media, and a growing tech scene. Latin America’s second-largest metro economy.',
+    geography:'In the Valley of Mexico at 2,240 m elevation, prone to earthquakes and subsidence as the ancient lake drains.',
+    highlights:['Zócalo','Templo Mayor','Museo Frida Kahlo','Chapultepec Park','Teotihuacan day trip']
+  },
+  fr:{
+    name:'Mexico', country:'Mexique',
+    tagline:'Une mégapole sur un lac — ruines aztèques, fresques et tacos.',
+    founded:'1325 (Tenochtitlan)', language:'Espagnol',
+    history:'Construite par les Aztèques sur une île du lac Texcoco, détruite par Cortés, reconstruite comme capitale de la Nouvelle-Espagne.',
+    culture:'La Maison Bleue de Frida Kahlo, les fresques de Diego Rivera, et une scène gastronomique inscrite au patrimoine immatériel de l’UNESCO.',
+    economy:'Le moteur économique du Mexique — finance, industrie, médias et une scène tech en croissance. La deuxième économie métropolitaine d’Amérique latine.',
+    geography:'Dans la vallée de Mexico à 2 240 m d’altitude, sujette aux séismes et à l’affaissement à mesure que l’ancien lac s’assèche.',
+    highlights:['Zócalo','Templo Mayor','Musée Frida Kahlo','Parc Chapultepec','Excursion à Teotihuacan']
+  },
+  zh:{
+    name:'墨西哥城', country:'墨西哥',
+    tagline:'建在湖上的巨型都市——阿兹特克遗迹、壁画与玉米饼。',
+    founded:'1325 年（特诺奇蒂特兰）', language:'西班牙语',
+    history:'阿兹特克人在特斯科科湖的岛上建立，被科尔特斯摧毁后重建为新西班牙首府。',
+    culture:'弗里达·卡罗的蓝房子、迭戈·里维拉的壁画，以及被列入联合国教科文组织非物质文化遗产的美食文化。',
+    economy:'墨西哥的经济引擎——金融、制造、媒体与不断壮大的科技产业。拉丁美洲第二大都市经济体。',
+    geography:'位于海拔 2,240 米的墨西哥谷地，易受地震影响，古湖干涸导致地面沉降。',
+    highlights:['宪法广场','大神庙','弗里达·卡罗博物馆','查普尔特佩克公园','特奥蒂瓦坎一日游']
+  }
+},
+{
+  id:'buenosaires', flag:'🇦🇷', region:'americas', tier:1, weight:2.5,
+  coords:'34.6037° S, 58.3816° W', population:'3.1M', area:'203 km²', gdp:'$200B',
+  en:{
+    name:'Buenos Aires', country:'Argentina',
+    tagline:'The Paris of South America — tango, steak, and psychoanalysis.',
+    founded:'1536 (Pedro de Mendoza)', language:'Spanish',
+    history:'A Spanish colonial port that became a boomtown of European immigration, then the cultural capital of South America.',
+    culture:'Tango, Borges, and a café culture that rivals Vienna. The Teatro Colón is one of the world’s great opera houses.',
+    economy:'Finance, agribusiness, tourism, and a strong creative and tech sector. Argentina’s financial centre.',
+    geography:'On the Río de la Plata estuary, a flat, grid-patterned city of grand boulevards and barrios.',
+    highlights:['Teatro Colón','La Boca','San Telmo','Recoleta Cemetery','Palermo parks']
+  },
+  fr:{
+    name:'Buenos Aires', country:'Argentine',
+    tagline:'Le Paris de l’Amérique du Sud — tango, bœuf et psychanalyse.',
+    founded:'1536 (Pedro de Mendoza)', language:'Espagnol',
+    history:'Un port colonial espagnol devenu ville champignon de l’immigration européenne, puis capitale culturelle de l’Amérique du Sud.',
+    culture:'Le tango, Borges, et une culture de café qui rivalise avec Vienne. Le Teatro Colón est l’une des grandes scènes lyriques mondiales.',
+    economy:'Finance, agro-industrie, tourisme et un fort secteur créatif et tech. Le centre financier de l’Argentine.',
+    geography:'Sur l’estuaire du Río de la Plata, une ville plate quadrillée de grands boulevards et de barrios.',
+    highlights:['Teatro Colón','La Boca','San Telmo','Cimetière de Recoleta','Parcs de Palermo']
+  },
+  zh:{
+    name:'布宜诺斯艾利斯', country:'阿根廷',
+    tagline:'南美巴黎——探戈、牛排与精神分析。',
+    founded:'1536 年（佩德罗·德·门多萨）', language:'西班牙语',
+    history:'从西班牙殖民港口到欧洲移民新兴城市，再到南美洲的文化之都。',
+    culture:'探戈、博尔赫斯，以及与维也纳相媲美的咖啡馆文化。科隆剧院是全球顶级歌剧院之一。',
+    economy:'金融、农业综合企业、旅游，以及强大的创意与科技产业。阿根廷的金融中心。',
+    geography:'位于拉普拉塔河河口，平坦的网格状城市，林荫大道与街区交错。',
+    highlights:['科隆剧院','博卡区','圣特尔莫','雷科莱塔公墓','巴勒莫公园']
+  }
+},
+{
+  id:'saopaulo', flag:'🇧🇷', region:'americas', tier:1, weight:2.5,
+  coords:'23.5505° S, 46.6333° W', population:'12.3M', area:'1,523 km²', gdp:'$450B',
+  en:{
+    name:'São Paulo', country:'Brazil',
+    tagline:'South America’s largest city — finance, food, and relentless energy.',
+    founded:'1554 (Jesuit mission)', language:'Portuguese',
+    history:'A Jesuit mission that became a coffee boomtown, then the industrial and financial heart of Brazil.',
+    culture:'A mosaic of immigrant cultures (Italian, Japanese, Arab, African). The MASP museum and a world-class food scene.',
+    economy:'Finance (B3 exchange), manufacturing, services, and a growing tech ecosystem. The economic capital of South America.',
+    geography:'On a plateau 800 m above sea level, 70 km from the Atlantic. A sprawling, car-centric metropolis.',
+    highlights:['MASP','Ibirapuera Park','Municipal Market','Beco do Batman','Paulista Avenue']
+  },
+  fr:{
+    name:'São Paulo', country:'Brésil',
+    tagline:'La plus grande ville d’Amérique du Sud — finance, gastronomie et énergie sans relâche.',
+    founded:'1554 (mission jésuite)', language:'Portugais',
+    history:'Une mission jésuite devenue ville champignon du café, puis le cœur industriel et financier du Brésil.',
+    culture:'Une mosaïque de cultures immigrées (italienne, japonaise, arabe, africaine). Le musée MASP et une scène gastronomique de premier plan.',
+    economy:'Finance (Bourse B3), industrie, services et un écosystème tech en croissance. La capitale économique de l’Amérique du Sud.',
+    geography:'Sur un plateau à 800 m d’altitude, à 70 km de l’Atlantique. Une métropole tentaculaire dominée par l’automobile.',
+    highlights:['MASP','Parc Ibirapuera','Marché municipal','Beco do Batman','Avenue Paulista']
+  },
+  zh:{
+    name:'圣保罗', country:'巴西',
+    tagline:'南美最大城市——金融、美食与不竭的活力。',
+    founded:'1554 年（耶稣会传教站）', language:'葡萄牙语',
+    history:'从耶稣会传教站到咖啡新兴城市，再到巴西的工业与金融中心。',
+    culture:'移民文化拼图（意大利、日本、阿拉伯、非洲）。圣保罗艺术博物馆与顶尖美食场景。',
+    economy:'金融（B3 交易所）、制造业、服务业与不断壮大的科技生态。南美洲的经济之都。',
+    geography:'位于海拔 800 米的高原，距大西洋 70 公里。以汽车为主导的 sprawling 大都市。',
+    highlights:['圣保罗艺术博物馆','伊比拉普埃拉公园','市政市场','蝙蝠侠巷','保利斯塔大道']
+  }
+},
+{
+  id:'amsterdam', flag:'🇳🇱', region:'europe', tier:2, weight:2.0,
+  coords:'52.3676° N, 4.9041° E', population:'920K', area:'219 km²', gdp:'$120B',
+  en:{
+    name:'Amsterdam', country:'Netherlands',
+    tagline:'Canals, bicycles, and a trading spirit that shaped the modern world.',
+    founded:'~1270', language:'Dutch',
+    history:'A 17th-century trading powerhouse (the Dutch Golden Age) that pioneered global capitalism, tolerance, and canal engineering.',
+    culture:'The Rijksmuseum, Van Gogh Museum, and a cycling culture that is more than transport — it is identity.',
+    economy:'A major European tech and startup hub, with strengths in finance, logistics, and creative industries.',
+    geography:'Built on a network of canals and reclaimed land. The city is below sea level in places, protected by dikes and pumps.',
+    highlights:['Rijksmuseum','Van Gogh Museum','Jordaan','Vondelpark','Anne Frank House']
+  },
+  fr:{
+    name:'Amsterdam', country:'Pays-Bas',
+    tagline:'Canaux, vélos, et un esprit marchand qui a façonné le monde moderne.',
+    founded:'~1270', language:'Néerlandais',
+    history:'Une puissance commerciale du XVIIe siècle (l’Âge d’or hollandais) qui a été pionnière du capitalisme mondial, de la tolérance et de l’ingénierie des canaux.',
+    culture:'Le Rijksmuseum, le musée Van Gogh, et une culture du vélo qui est plus qu’un transport — une identité.',
+    economy:'Un grand pôle européen de la tech et des startups, fort dans la finance, la logistique et les industries créatives.',
+    geography:'Construite sur un réseau de canaux et de terres reconquises. La ville est par endroits sous le niveau de la mer, protégée par des digues et des pompes.',
+    highlights:['Rijksmuseum','Musée Van Gogh','Jordaan','Vondelpark','Maison d’Anne Frank']
+  },
+  zh:{
+    name:'阿姆斯特丹', country:'荷兰',
+    tagline:'运河、自行车，以及塑造现代世界的贸易精神。',
+    founded:'约 1270 年', language:'荷兰语',
+    history:'17 世纪的贸易强国（荷兰黄金时代），开创了全球资本主义、宽容与运河工程。',
+    culture:'国家博物馆、梵高博物馆，以及不仅是交通方式更是身份的骑行文化。',
+    economy:'欧洲重要的科技与创业中心，在金融、物流与创意产业方面实力雄厚。',
+    geography:'建在运河网络与围垦土地上。部分地区低于海平面，由堤坝与水泵保护。',
+    highlights:['国家博物馆','梵高博物馆','约旦区','冯德尔公园','安妮之家']
+  }
+},
+{
+  id:'berlin', flag:'🇩🇪', region:'europe', tier:1, weight:2.0,
+  coords:'52.5200° N, 13.4050° E', population:'3.7M', area:'891 km²', gdp:'$230B',
+  en:{
+    name:'Berlin', country:'Germany',
+    tagline:'A city of scars and reinvention — cheap, creative, and restless.',
+    founded:'1237', language:'German',
+    history:'From Prussian capital to Weimar ferment, Nazi capital, divided city, and reunified creative hub. The Wall fell in 1989, and the city has been rebuilding its identity ever since.',
+    culture:'Techno clubs, world-class museums (Museum Island), and a thriving independent art scene. Berlin is a magnet for artists, musicians, and startups.',
+    economy:'Strong in tech, media, and creative industries. Lower cost of living than London or Paris has attracted talent from across Europe.',
+    geography:'Set on the Spree and Havel rivers in the North German Plain. A flat, green city with extensive lakes and forests.',
+    highlights:['Brandenburg Gate','East Side Gallery','Museum Island','Tempelhofer Feld','Berlin Philharmonic']
+  },
+  fr:{
+    name:'Berlin', country:'Allemagne',
+    tagline:'Une ville de cicatrices et de réinvention — bon marché, créative et agitée.',
+    founded:'1237', language:'Allemand',
+    history:'De capitale prussienne à foyer de Weimar, capitale nazie, ville divisée, puis pôle créatif réunifié. Le Mur est tombé en 1989, et la ville reconstruit son identité depuis.',
+    culture:'Clubs techno, musées de premier plan (l’île aux Musées), et une scène artistique indépendante florissante. Berlin attire artistes, musiciens et startups.',
+    economy:'Forte dans la tech, les médias et les industries créatives. Un coût de la vie inférieur à Londres ou Paris attire des talents de toute l’Europe.',
+    geography:'Sur la Spree et la Havel, dans la plaine d’Allemagne du Nord. Une ville plate et verte, aux nombreux lacs et forêts.',
+    highlights:['Porte de Brandebourg','East Side Gallery','Île aux Musées','Tempelhofer Feld','Philharmonie de Berlin']
+  },
+  zh:{
+    name:'柏林', country:'德国',
+    tagline:'伤痕与重生的城市——廉价、创意、躁动。',
+    founded:'1237 年', language:'德语',
+    history:'从普鲁士首都到魏玛时期的沸腾、纳粹首都、分裂城市，再到统一后的创意中心。1989 年柏林墙倒塌，此后城市一直在重塑自我。',
+    culture:'电子乐俱乐部、世界级博物馆（博物馆岛），以及繁荣的独立艺术场景。柏林吸引着艺术家、音乐人与创业者。',
+    economy:'科技、媒体与创意产业实力雄厚。生活成本低于伦敦和巴黎，吸引了来自全欧洲的人才。',
+    geography:'位于北德平原的施普雷河与哈弗尔河畔。平坦绿色的城市，湖泊与森林广布。',
+    highlights:['勃兰登堡门','东边画廊','博物馆岛','滕珀尔霍夫机场','柏林爱乐乐团']
+  }
+},
+{
+  id:'madrid', flag:'🇪🇸', region:'europe', tier:1, weight:2.0,
+  coords:'40.4168° N, 3.7038° W', population:'3.3M', area:'604 km²', gdp:'$280B',
+  en:{
+    name:'Madrid', country:'Spain',
+    tagline:'Spain’s sunlit capital — art, tapas, and late-night life.',
+    founded:'9th century (Moorish Mayrit)', language:'Spanish',
+    history:'A Moorish fortress that became the seat of the Spanish Habsburgs and Bourbons. The Prado and Royal Palace reflect its imperial past.',
+    culture:'The Golden Triangle of Art (Prado, Reina Sofía, Thyssen) and a nightlife that starts at midnight. Football is a civic religion.',
+    economy:'Spain’s financial and political centre, with strong tourism, public administration, and a growing tech sector.',
+    geography:'On the Meseta Central plateau at 650 m elevation — the highest capital in Europe. Hot summers, cold winters.',
+    highlights:['Prado Museum','Royal Palace','Retiro Park','Plaza Mayor','Gran Vía']
+  },
+  fr:{
+    name:'Madrid', country:'Espagne',
+    tagline:'La capitale ensoleillée de l’Espagne — art, tapas et vie nocturne.',
+    founded:'IXe siècle (Mayrit maure)', language:'Espagnol',
+    history:'Une forteresse maure devenue siège des Habsbourg puis des Bourbons espagnols. Le Prado et le Palais royal témoignent de son passé impérial.',
+    culture:'Le Triangle d’or de l’art (Prado, Reina Sofía, Thyssen) et une vie nocturne qui commence à minuit. Le football est une religion civique.',
+    economy:'Centre financier et politique de l’Espagne, avec un fort tourisme, une administration publique importante et un secteur tech en croissance.',
+    geography:'Sur le plateau de la Meseta à 650 m d’altitude — la plus haute capitale d’Europe. Étés chauds, hivers froids.',
+    highlights:['Musée du Prado','Palais royal','Parc du Retiro','Plaza Mayor','Gran Vía']
+  },
+  zh:{
+    name:'马德里', country:'西班牙',
+    tagline:'阳光明媚的西班牙首都——艺术、塔帕斯与夜生活。',
+    founded:'9 世纪（摩尔人 Mayrit）', language:'西班牙语',
+    history:'从摩尔人堡垒到西班牙哈布斯堡与波旁王朝的宫廷。普拉多博物馆与王宫见证着帝国过往。',
+    culture:'艺术金三角（普拉多、索菲亚王后、提森）以及午夜才开始的夜生活。足球是一种公民宗教。',
+    economy:'西班牙的金融与政治中心，旅游业、公共行政与不断壮大的科技产业实力雄厚。',
+    geography:'位于海拔 650 米的中央高原——欧洲海拔最高的首都。夏季炎热，冬季寒冷。',
+    highlights:['普拉多博物馆','王宫','丽池公园','主广场','格兰大道']
+  }
+},
+{
+  id:'rome', flag:'🇮🇹', region:'europe', tier:1, weight:2.0,
+  coords:'41.9028° N, 12.4964° E', population:'2.8M', area:'1,285 km²', gdp:'$180B',
+  en:{
+    name:'Rome', country:'Italy',
+    tagline:'The eternal city — empire, church, and la dolce vita.',
+    founded:'753 BC (legendary)', language:'Italian',
+    history:'Capital of the Roman Republic and Empire, then the Papal States, then the unified Kingdom of Italy. Layers of antiquity sit beneath every street.',
+    culture:'The Colosseum, Vatican Museums, and a cuisine and café culture that define Italian identity. Cinema and fashion are part of the fabric.',
+    economy:'Tourism, government, film, and a growing tech scene. The Vatican is a separate sovereign state within the city.',
+    geography:'On the Tiber River in central Italy, surrounded by the Lazio hills. A hot, dry summer Mediterranean climate.',
+    highlights:['Colosseum','Vatican Museums','Pantheon','Trevi Fountain','Trastevere']
+  },
+  fr:{
+    name:'Rome', country:'Italie',
+    tagline:'La ville éternelle — empire, Église et dolce vita.',
+    founded:'753 av. J.-C. (légendaire)', language:'Italien',
+    history:'Capitale de la République et de l’Empire romains, puis des États pontificaux, puis du royaume d’Italie unifié. Des strates d’antiquité dorment sous chaque rue.',
+    culture:'Le Colisée, les musées du Vatican, et une cuisine et une culture de café qui définissent l’identité italienne. Cinéma et mode font partie du tissu urbain.',
+    economy:'Tourisme, gouvernement, cinéma et une scène tech en croissance. Le Vatican est un État souverain distinct au sein de la ville.',
+    geography:'Sur le Tibre, au centre de l’Italie, entourée des collines du Latium. Un climat méditerranéen chaud et sec en été.',
+    highlights:['Colisée','Musées du Vatican','Panthéon','Fontaine de Trevi','Trastevere']
+  },
+  zh:{
+    name:'罗马', country:'意大利',
+    tagline:'永恒之城——帝国、教会与甜蜜生活。',
+    founded:'公元前 753 年（传说）', language:'意大利语',
+    history:'罗马共和国与帝国首都，后为教宗国，再成为统一的意大利王国首都。每条街道下都埋藏着古代层层遗迹。',
+    culture:'斗兽场、梵蒂冈博物馆，以及定义意大利身份的美食与咖啡馆文化。电影与时尚融入城市肌理。',
+    economy:'旅游业、政府、电影与不断壮大的科技产业。梵蒂冈是城中的独立主权国家。',
+    geography:'位于意大利中部的台伯河畔，四周环绕拉齐奥山丘。夏季炎热干燥的地中海气候。',
+    highlights:['斗兽场','梵蒂冈博物馆','万神殿','特雷维喷泉','特拉斯提弗列']
+  }
+},
+{
+  id:'vienna', flag:'🇦🇹', region:'europe', tier:2, weight:2.0,
+  coords:'48.2082° N, 16.3738° E', population:'1.9M', area:'415 km²', gdp:'$130B',
+  en:{
+    name:'Vienna', country:'Austria',
+    tagline:'Imperial grandeur, coffee houses, and the sound of classical music.',
+    founded:'~500 BC (Celtic settlement)', language:'German',
+    history:'Capital of the Habsburg Empire, then the Austro-Hungarian Empire. A city of palaces, music, and psychoanalysis.',
+    culture:'Mozart, Beethoven, Freud, and Klimt all called Vienna home. The coffee house is a UNESCO-listed institution.',
+    economy:'Finance, tourism, international organisations (UN, OPEC), and a strong life-sciences sector.',
+    geography:'On the Danube in eastern Austria, at the foot of the Vienna Woods.',
+    highlights:['Schönbrunn Palace','St. Stephen’s Cathedral','Belvedere','Naschmarkt','Vienna State Opera']
+  },
+  fr:{
+    name:'Vienne', country:'Autriche',
+    tagline:'Grandeur impériale, cafés et musique classique.',
+    founded:'~500 av. J.-C. (établissement celte)', language:'Allemand',
+    history:'Capitale de l’Empire des Habsbourg, puis de l’Empire austro-hongrois. Une ville de palais, de musique et de psychanalyse.',
+    culture:'Mozart, Beethoven, Freud et Klimt ont tous vécu à Vienne. Le café viennois est inscrit au patrimoine immatériel de l’UNESCO.',
+    economy:'Finance, tourisme, organisations internationales (ONU, OPEP) et un fort secteur des sciences de la vie.',
+    geography:'Sur le Danube, dans l’est de l’Autriche, au pied de la forêt viennoise.',
+    highlights:['Palais de Schönbrunn','Cathédrale Saint-Étienne','Belvédère','Naschmarkt','Opéra d’État de Vienne']
+  },
+  zh:{
+    name:'维也纳', country:'奥地利',
+    tagline:'帝国气派、咖啡馆与古典音乐之声。',
+    founded:'约公元前 500 年（凯尔特聚落）', language:'德语',
+    history:'哈布斯堡帝国与奥匈帝国的首都。一座宫殿、音乐与精神分析之城。',
+    culture:'莫扎特、贝多芬、弗洛伊德与克里姆特都曾在维也纳生活。咖啡馆是联合国教科文组织认定的文化机构。',
+    economy:'金融、旅游、国际组织（联合国、欧佩克），以及强大的生命科学产业。',
+    geography:'位于奥地利东部的多瑙河畔，维也纳森林脚下。',
+    highlights:['美泉宫','圣斯特凡大教堂','美景宫','纳旭市场','维也纳国家歌剧院']
+  }
+},
+{
+  id:'barcelona', flag:'🇪🇸', region:'europe', tier:2, weight:2.0,
+  coords:'41.3874° N, 2.1686° E', population:'1.6M', area:'101 km²', gdp:'$110B',
+  en:{
+    name:'Barcelona', country:'Spain',
+    tagline:'Gaudí, the Mediterranean, and a fierce Catalan identity.',
+    founded:'~15 BC (Roman Barcino)', language:'Catalan / Spanish',
+    history:'A Roman city, then a medieval trading power, then an industrial engine of Catalonia. The 1992 Olympics transformed it into a global destination.',
+    culture:'Antoni Gaudí’s Sagrada Família, Park Güell, and a thriving food and design scene. Catalan is the first language of many residents.',
+    economy:'Tourism, design, tech, and a strong manufacturing base. The city is a hub for southern European startups.',
+    geography:'On the Mediterranean coast between the Besòs and Llobregat rivers, backed by the Collserola hills.',
+    highlights:['Sagrada Família','Park Güell','Gothic Quarter','La Boqueria','Barceloneta']
+  },
+  fr:{
+    name:'Barcelone', country:'Espagne',
+    tagline:'Gaudí, la Méditerranée et une identité catalane farouche.',
+    founded:'~15 av. J.-C. (Barcino romain)', language:'Catalan / Espagnol',
+    history:'Une ville romaine, puis une puissance marchande médiévale, puis un moteur industriel de la Catalogne. Les Jeux olympiques de 1992 en ont fait une destination mondiale.',
+    culture:'La Sagrada Família d’Antoni Gaudí, le parc Güell, et une scène gastronomique et de design florissante. Le catalan est la langue maternelle de nombreux habitants.',
+    economy:'Tourisme, design, tech et une solide base industrielle. La ville est un pôle de startups du sud de l’Europe.',
+    geography:'Sur la côte méditerranéenne entre les rivières Besòs et Llobregat, adossée aux collines de Collserola.',
+    highlights:['Sagrada Família','Parc Güell','Quartier gothique','La Boqueria','Barceloneta']
+  },
+  zh:{
+    name:'巴塞罗那', country:'西班牙',
+    tagline:'高迪、地中海与强烈的加泰罗尼亚身份。',
+    founded:'约公元前 15 年（罗马 Barcino）', language:'加泰罗尼亚语 / 西班牙语',
+    history:'从罗马城市到中世纪贸易强国，再到加泰罗尼亚的工业引擎。1992 年奥运会将其转变为全球目的地。',
+    culture:'高迪的圣家堂、桂尔公园，以及繁荣的美食与设计场景。加泰罗尼亚语是许多居民的母语。',
+    economy:'旅游、设计、科技与强大的制造业基础。南欧初创企业的中心之一。',
+    geography:'位于贝索斯河与略夫雷加特河之间的地中海沿岸，背靠科尔塞罗拉山。',
+    highlights:['圣家堂','桂尔公园','哥特区','波盖利亚市场','巴塞罗内塔']
+  }
+},
+{
+  id:'stockholm', flag:'🇸🇪', region:'europe', tier:2, weight:2.0,
+  coords:'59.3293° N, 18.0686° E', population:'980K', area:'188 km²', gdp:'$140B',
+  en:{
+    name:'Stockholm', country:'Sweden',
+    tagline:'Spread across islands — clean, design-forward, and quietly cool.',
+    founded:'1252', language:'Swedish',
+    history:'A medieval trading town that became the capital of the Swedish Empire, then a model of social democracy.',
+    culture:'The Vasa Museum, ABBA, and a design and music export machine (Spotify, H&M, IKEA).',
+    economy:'Tech, design, music, and green energy. Stockholm is one of Europe’s top startup hubs per capita.',
+    geography:'Built on 14 islands where Lake Mälaren meets the Baltic Sea. A city of bridges and water.',
+    highlights:['Gamla Stan','Vasa Museum','Djurgården','Fotografiska','ABBA Museum']
+  },
+  fr:{
+    name:'Stockholm', country:'Suède',
+    tagline:'Étalée sur ses îles — propre, design et discrètement cool.',
+    founded:'1252', language:'Suédois',
+    history:'Une ville marchande médiévale devenue capitale de l’Empire suédois, puis un modèle de démocratie sociale.',
+    culture:'Le musée Vasa, ABBA, et une machine d’exportation du design et de la musique (Spotify, H&M, IKEA).',
+    economy:'Tech, design, musique et énergie verte. Stockholm est l’un des premiers pôles de startups d’Europe par habitant.',
+    geography:'Construite sur 14 îles où le lac Mälaren rencontre la mer Baltique. Une ville de ponts et d’eau.',
+    highlights:['Gamla Stan','Musée Vasa','Djurgården','Fotografiska','Musée ABBA']
+  },
+  zh:{
+    name:'斯德哥尔摩', country:'瑞典',
+    tagline:'横跨群岛——洁净、设计感十足、低调而酷。',
+    founded:'1252 年', language:'瑞典语',
+    history:'从中世纪贸易城镇到瑞典帝国首都，再到社会民主的典范。',
+    culture:'瓦萨博物馆、ABBA，以及设计音乐出口机器（Spotify、H&M、宜家）。',
+    economy:'科技、设计、音乐与绿色能源。斯德哥尔摩是欧洲人均创业密度最高的城市之一。',
+    geography:'建在梅拉伦湖与波罗的海交汇处的 14 座岛屿上。桥梁与水域交织的城市。',
+    highlights:['老城','瓦萨博物馆','动物园岛','摄影博物馆','ABBA 博物馆']
+  }
+},
+{
+  id:'copenhagen', flag:'🇩🇰', region:'europe', tier:2, weight:2.0,
+  coords:'55.6761° N, 12.5683° E', population:'650K', area:'88 km²', gdp:'$110B',
+  en:{
+    name:'Copenhagen', country:'Denmark',
+    tagline:'Hygge, bicycles, and the happiest urban design on Earth.',
+    founded:'~800 AD (Viking fishing village)', language:'Danish',
+    history:'A Viking harbour that became the capital of Denmark. Home to Kierkegaard and the Danish resistance.',
+    culture:'Nyhavn, Tivoli Gardens, and a food scene led by Noma. Design is a national export.',
+    economy:'Shipping (Maersk), pharma (Novo Nordisk), design, and world-leading cycling infrastructure.',
+    geography:'On the islands of Zealand and Amager, connected to Sweden by the Øresund Bridge.',
+    highlights:['Nyhavn','Tivoli Gardens','The Little Mermaid','Torvehallerne','Christiania']
+  },
+  fr:{
+    name:'Copenhague', country:'Danemark',
+    tagline:'Hygge, vélos et le design urbain le plus heureux du monde.',
+    founded:'~800 apr. J.-C. (village viking)', language:'Danois',
+    history:'Un port viking devenu capitale du Danemark. Patrie de Kierkegaard et de la résistance danoise.',
+    culture:'Nyhavn, les jardins de Tivoli, et une scène gastronomique menée par Noma. Le design est une exportation nationale.',
+    economy:'Transport maritime (Maersk), pharmacie (Novo Nordisk), design et infrastructures cyclables de premier plan.',
+    geography:'Sur les îles de Seeland et d’Amager, reliée à la Suède par le pont de l’Øresund.',
+    highlights:['Nyhavn','Jardins de Tivoli','La Petite Sirène','Torvehallerne','Christiania']
+  },
+  zh:{
+    name:'哥本哈根', country:'丹麦',
+    tagline:'Hygge、自行车，全球最幸福的都市设计。',
+    founded:'约公元 800 年（维京渔村）', language:'丹麦语',
+    history:'从维京港口到丹麦首都。克尔凯郭尔与丹麦抵抗运动的故乡。',
+    culture:'新港、蒂沃利公园，以及以 Noma 为首的美食场景。设计是国民出口产业。',
+    economy:'航运（马士基）、制药（诺和诺德）、设计与领先全球的自行车基础设施。',
+    geography:'位于西兰岛与阿迈厄岛，由厄勒海峡大桥连接瑞典。',
+    highlights:['新港','蒂沃利公园','小美人鱼','托尔维哈勒市场','克里斯蒂安尼亚']
+  }
+},
+{
+  id:'prague', flag:'🇨🇿', region:'europe', tier:2, weight:2.0,
+  coords:'50.0755° N, 14.4378° E', population:'1.3M', area:'496 km²', gdp:'$80B',
+  en:{
+    name:'Prague', country:'Czech Republic',
+    tagline:'A fairy-tale city of bridges, spires, and cheap beer.',
+    founded:'~9th century', language:'Czech',
+    history:'Capital of Bohemia, seat of the Holy Roman Empire under Charles IV, then a Cold War satellite that became a tourist magnet.',
+    culture:'Kafka, the Velvet Revolution, and a beer culture that is cheaper than water. The Astronomical Clock is a medieval marvel.',
+    economy:'Tourism, automotive (Škoda), and a growing tech sector. Prague is a popular film-production hub.',
+    geography:'On the Vltava River in central Bohemia, with seven hills and a well-preserved medieval centre.',
+    highlights:['Charles Bridge','Prague Castle','Old Town Square','Astronomical Clock','Vyšehrad']
+  },
+  fr:{
+    name:'Prague', country:'Tchéquie',
+    tagline:'Une ville de conte de fées — ponts, flèches et bière bon marché.',
+    founded:'~IXe siècle', language:'Tchèque',
+    history:'Capitale de la Bohême, siège du Saint-Empire sous Charles IV, puis satellite de la Guerre froide devenu aimant touristique.',
+    culture:'Kafka, la Révolution de Velours, et une culture de la bière moins chère que l’eau. L’horloge astronomique est une merveille médiévale.',
+    economy:'Tourisme, automobile (Škoda) et un secteur tech en croissance. Prague est un pôle de production cinématographique.',
+    geography:'Sur la Vltava, au centre de la Bohême, avec sept collines et un centre médiéval bien préservé.',
+    highlights:['Pont Charles','Château de Prague','Place de la Vieille-Ville','Horloge astronomique','Vyšehrad']
+  },
+  zh:{
+    name:'布拉格', country:'捷克',
+    tagline:'童话般的城市——桥梁、尖塔与便宜啤酒。',
+    founded:'约 9 世纪', language:'捷克语',
+    history:'波希米亚首都、查理四世时期神圣罗马帝国驻地，冷战时期的卫星国，如今成为旅游磁石。',
+    culture:'卡夫卡、天鹅绒革命，以及比水还便宜的啤酒文化。天文钟是中世纪奇迹。',
+    economy:'旅游、汽车（斯柯达）与不断壮大的科技产业。布拉格是热门的电影制作中心。',
+    geography:'位于波希米亚中部的伏尔塔瓦河畔，七座山丘与保存完好的中世纪中心。',
+    highlights:['查理大桥','布拉格城堡','老城广场','天文钟','高堡']
+  }
+},
+{
+  id:'lisbon', flag:'🇵🇹', region:'europe', tier:2, weight:2.0,
+  coords:'38.7223° N, 9.1393° W', population:'550K', area:'100 km²', gdp:'$90B',
+  en:{
+    name:'Lisbon', country:'Portugal',
+    tagline:'Seven hills, Atlantic light, and the melancholy of fado.',
+    founded:'~1200 BC (legendary Odysseus)', language:'Portuguese',
+    history:'A Phoenician and Roman port that became the launchpad for the Age of Discovery. Rebuilt after the 1755 earthquake.',
+    culture:'Fado music, azulejo tiles, and a literary tradition (Pessoa, Saramago). Pastel de nata is a daily ritual.',
+    economy:'Tourism, tech (Web Summit), and a growing startup ecosystem. Lower costs have attracted remote workers.',
+    geography:'On the Tagus estuary, with steep hills, trams, and Atlantic beaches nearby.',
+    highlights:['Belém Tower','Alfama','Jerónimos Monastery','Time Out Market','Sintra day trip']
+  },
+  fr:{
+    name:'Lisbonne', country:'Portugal',
+    tagline:'Sept collines, lumière atlantique et mélancolie du fado.',
+    founded:'~1200 av. J.-C. (Ulysse légendaire)', language:'Portugais',
+    history:'Un port phénicien et romain devenu le point de départ de l’âge des découvertes. Reconstruite après le séisme de 1755.',
+    culture:'Le fado, les azulejos, et une tradition littéraire (Pessoa, Saramago). Le pastel de nata est un rituel quotidien.',
+    economy:'Tourisme, tech (Web Summit) et un écosystème de startups en croissance. Des coûts plus bas attirent les travailleurs à distance.',
+    geography:'Sur l’estuaire du Tage, avec des collines escarpées, des tramways et des plages atlantiques à proximité.',
+    highlights:['Tour de Belém','Alfama','Monastère des Hiéronymites','Time Out Market','Excursion à Sintra']
+  },
+  zh:{
+    name:'里斯本', country:'葡萄牙',
+    tagline:'七丘之城、大西洋之光与法多的忧伤。',
+    founded:'约公元前 1200 年（传说奥德修斯）', language:'葡萄牙语',
+    history:'腓尼基与罗马港口，大航海时代的起点。1755 年地震后重建。',
+    culture:'法多音乐、瓷砖画，以及文学传统（佩索阿、萨拉马戈）。蛋挞是日常仪式。',
+    economy:'旅游、科技（网络峰会）与不断壮大的创业生态。较低成本吸引了远程工作者。',
+    geography:'位于塔霍河河口，陡峭山丘、有轨电车与附近的大西洋海滩。',
+    highlights:['贝伦塔','阿尔法玛','热罗尼莫斯修道院','Time Out 市场','辛特拉一日游']
+  }
+},
+{
+  id:'manchester', flag:'🇬🇧', region:'europe', tier:2, weight:1.8,
+  coords:'53.4808° N, 2.2426° W', population:'550K', area:'116 km²', gdp:'$80B',
+  en:{
+    name:'Manchester', country:'United Kingdom',
+    tagline:'Cottonopolis turned music city — industry, football, and rain.',
+    founded:'~79 AD (Roman Mamucium)', language:'English',
+    history:'The world’s first industrial city, powered by cotton mills and the canal network. Then a post-industrial renaissance.',
+    culture:'A legendary music scene (The Smiths, Oasis, Joy Division), two global football clubs, and a strong media presence (BBC North).',
+    economy:'Media, tech, finance, and education. The largest economy outside London in the UK.',
+    geography:'On the River Irwell in northwest England, between the Pennines and the Cheshire Plain.',
+    highlights:['Old Trafford','Etihad Stadium','Northern Quarter','Science and Industry Museum','John Rylands Library']
+  },
+  fr:{
+    name:'Manchester', country:'Royaume-Uni',
+    tagline:'De Cottonopolis à ville musicale — industrie, football et pluie.',
+    founded:'~79 apr. J.-C. (Mamucium romain)', language:'Anglais',
+    history:'La première ville industrielle du monde, portée par les filatures de coton et le réseau de canaux. Puis une renaissance post-industrielle.',
+    culture:'Une scène musicale légendaire (The Smiths, Oasis, Joy Division), deux clubs de football mondiaux, et une forte présence médiatique (BBC North).',
+    economy:'Médias, tech, finance et éducation. La plus grande économie du Royaume-Uni hors Londres.',
+    geography:'Sur la rivière Irwell, dans le nord-ouest de l’Angleterre, entre les Pennines et la plaine de Cheshire.',
+    highlights:['Old Trafford','Etihad Stadium','Northern Quarter','Musée des sciences et de l’industrie','Bibliothèque John Rylands']
+  },
+  zh:{
+    name:'曼彻斯特', country:'英国',
+    tagline:'从棉都到音乐之城——工业、足球与雨。',
+    founded:'约公元 79 年（罗马 Mamucium）', language:'英语',
+    history:'世界第一座工业城市，由棉纺厂与运河网络驱动。后经历后工业时代复兴。',
+    culture:'传奇音乐场景（史密斯乐队、绿洲、快乐分裂）、两家全球足球俱乐部，以及强大的媒体存在（BBC 北方）。',
+    economy:'媒体、科技、金融与教育。英国除伦敦外最大的经济体。',
+    geography:'位于英格兰西北部的艾尔韦尔河畔，介于奔宁山脉与柴郡平原之间。',
+    highlights:['老特拉福德球场','伊蒂哈德球场','北区','科学与工业博物馆','约翰·赖兰兹图书馆']
+  }
+},
+{
+  id:'northampton', flag:'🇬🇧', region:'europe', tier:2, weight:1.2,
+  coords:'52.2405° N, 0.9027° W', population:'230K', area:'81 km²', gdp:'$12B',
+  en:{
+    name:'Northampton', country:'United Kingdom',
+    tagline:'A market town of shoemakers — quiet, historic, and underrated.',
+    founded:'~7th century (Hamtun)', language:'English',
+    history:'A medieval market town that became a major shoemaking centre, supplying boots to the British Army in both world wars.',
+    culture:'A strong shoemaking heritage (the Northampton Museum and Art Gallery), a lively market square, and a growing arts scene.',
+    economy:'Logistics, shoemaking (Church’s, Trickers), and a growing creative sector. A commuter town for London and Birmingham.',
+    geography:'On the River Nene in the East Midlands, halfway between London and Birmingham.',
+    highlights:['Northampton Guildhall','Market Square','Northampton Museum','Delapré Abbey','78 Derngate']
+  },
+  fr:{
+    name:'Northampton', country:'Royaume-Uni',
+    tagline:'Une ville de marché de cordonniers — calme, historique et sous-estimée.',
+    founded:'~VIIe siècle (Hamtun)', language:'Anglais',
+    history:'Une ville de marché médiévale devenue un grand centre de la chaussure, fournissant des bottes à l’armée britannique lors des deux guerres mondiales.',
+    culture:'Un fort héritage de la cordonnerie (le Northampton Museum and Art Gallery), une place de marché animée et une scène artistique croissante.',
+    economy:'Logistique, cordonnerie (Church’s, Trickers) et un secteur créatif en croissance. Une ville dortoir pour Londres et Birmingham.',
+    geography:'Sur la Nene, dans les East Midlands, à mi-chemin entre Londres et Birmingham.',
+    highlights:['Guildhall de Northampton','Market Square','Northampton Museum','Abbaye de Delapré','78 Derngate']
+  },
+  zh:{
+    name:'北安普顿', country:'英国',
+    tagline:'鞋匠的集镇——安静、历史悠久、被低估。',
+    founded:'约 7 世纪（Hamtun）', language:'英语',
+    history:'从中世纪集镇到重要的制鞋中心，两次世界大战期间为英国军队供应军靴。',
+    culture:'浓厚的制鞋传统（北安普顿博物馆与美术馆）、热闹的集市广场，以及不断成长的文艺氛围。',
+    economy:'物流、制鞋（Church’s、Trickers）与不断壮大的创意产业。伦敦与伯明翰的通勤城镇。',
+    geography:'位于东米德兰兹的尼恩河畔，介于伦敦与伯明翰之间。',
+    highlights:['北安普顿市政厅','集市广场','北安普顿博物馆','德拉普雷修道院','78 Derngate']
+  }
+},
+{
+  id:'edinburgh', flag:'🇬🇧', region:'europe', tier:2, weight:2.0,
+  coords:'55.9533° N, 3.1883° W', population:'530K', area:'264 km²', gdp:'$45B',
+  en:{
+    name:'Edinburgh', country:'United Kingdom',
+    tagline:'A literary, volcanic capital — festivals, castles, and fog.',
+    founded:'~7th century', language:'English / Scots',
+    history:'A medieval royal burgh that became the heart of the Scottish Enlightenment (Adam Smith, David Hume).',
+    culture:'The Edinburgh Festival Fringe, the world’s largest arts festival, and a literary heritage from Robert Burns to J.K. Rowling.',
+    economy:'Finance, tourism, higher education, and a growing tech sector (Skyscanner, FanDuel).',
+    geography:'Built on extinct volcanoes and glacial crags. The Castle sits on a plug of basalt above the city.',
+    highlights:['Edinburgh Castle','Royal Mile','Arthur’s Seat','National Museum of Scotland','Dean Village']
+  },
+  fr:{
+    name:'Édimbourg', country:'Royaume-Uni',
+    tagline:'Une capitale littéraire et volcanique — festivals, châteaux et brouillard.',
+    founded:'~VIIe siècle', language:'Anglais / Scots',
+    history:'Un burgh royal médiéval devenu le cœur des Lumières écossaises (Adam Smith, David Hume).',
+    culture:'Le Festival Fringe d’Édimbourg, le plus grand festival d’arts au monde, et un héritage littéraire de Robert Burns à J.K. Rowling.',
+    economy:'Finance, tourisme, enseignement supérieur et un secteur tech en croissance (Skyscanner, FanDuel).',
+    geography:'Bâtie sur des volcans éteints et des rochers glaciaires. Le château repose sur un piton de basalte au-dessus de la ville.',
+    highlights:['Château d’Édimbourg','Royal Mile','Arthur’s Seat','Musée national d’Écosse','Dean Village']
+  },
+  zh:{
+    name:'爱丁堡', country:'英国',
+    tagline:'文学与火山之城——节庆、城堡与雾。',
+    founded:'约 7 世纪', language:'英语 / 苏格兰语',
+    history:'从中世纪皇家自治市到苏格兰启蒙运动的心脏（亚当·斯密、大卫·休谟）。',
+    culture:'爱丁堡边缘艺术节，全球最大的艺术节，以及从罗伯特·彭斯到 J.K. 罗琳的文学传统。',
+    economy:'金融、旅游、高等教育与不断壮大的科技产业（天巡、FanDuel）。',
+    geography:'建在死火山与冰川岩之上。城堡坐落于城市上方的玄武岩岩颈。',
+    highlights:['爱丁堡城堡','皇家一英里','亚瑟王座','苏格兰国家博物馆','迪恩村']
+  }
+},
+{
+  id:'dublin', flag:'🇮🇪', region:'europe', tier:2, weight:2.0,
+  coords:'53.3498° N, 6.2603° W', population:'590K', area:'115 km²', gdp:'$120B',
+  en:{
+    name:'Dublin', country:'Ireland',
+    tagline:'Literary pubs, Georgian streets, and a tech boom.',
+    founded:'~841 (Viking settlement)', language:'English / Irish',
+    history:'A Viking port that became the capital of English rule in Ireland, then the capital of the Irish Free State.',
+    culture:'Joyce, Beckett, Wilde, and a pub culture that is the city’s living room. Trinity College and the Book of Kells.',
+    economy:'European headquarters for Google, Facebook, Apple, and Pfizer. A low corporate tax rate transformed the city.',
+    geography:'On the River Liffey at the head of Dublin Bay, backed by the Wicklow Mountains.',
+    highlights:['Trinity College','Guinness Storehouse','Temple Bar','St. Patrick’s Cathedral','Phoenix Park']
+  },
+  fr:{
+    name:'Dublin', country:'Irlande',
+    tagline:'Pubs littéraires, rues georgiennes et boom technologique.',
+    founded:'~841 (établissement viking)', language:'Anglais / Irlandais',
+    history:'Un port viking devenu capitale de la domination anglaise en Irlande, puis capitale de l’État libre d’Irlande.',
+    culture:'Joyce, Beckett, Wilde, et une culture de pub qui est le salon de la ville. Trinity College et le Livre de Kells.',
+    economy:'Siège européen de Google, Facebook, Apple et Pfizer. Un taux d’imposition réduit a transformé la ville.',
+    geography:'Sur la Liffey, à l’entrée de la baie de Dublin, adossée aux montagnes de Wicklow.',
+    highlights:['Trinity College','Guinness Storehouse','Temple Bar','Cathédrale Saint-Patrick','Phoenix Park']
+  },
+  zh:{
+    name:'都柏林', country:'爱尔兰',
+    tagline:'文学酒吧、乔治王朝街道与科技繁荣。',
+    founded:'约 841 年（维京聚落）', language:'英语 / 爱尔兰语',
+    history:'从维京港口到英格兰统治爱尔兰的首府，再到爱尔兰自由邦首都。',
+    culture:'乔伊斯、贝克特、王尔德，以及作为城市客厅的酒吧文化。三一学院与《凯尔经》。',
+    economy:'谷歌、Facebook、苹果、辉瑞的欧洲总部。低企业税率改变了这座城市。',
+    geography:'位于利菲河畔、都柏林湾顶端，背靠威克洛山脉。',
+    highlights:['三一学院','健力士啤酒展览馆','圣殿酒吧区','圣帕特里克大教堂','凤凰公园']
+  }
+},
+{
+  id:'athens', flag:'🇬🇷', region:'europe', tier:2, weight:2.0,
+  coords:'37.9838° N, 23.7275° E', population:'3.2M', area:'39 km² (city)', gdp:'$100B',
+  en:{
+    name:'Athens', country:'Greece',
+    tagline:'Democracy’s birthplace — ancient stones under a Mediterranean sun.',
+    founded:'~3000 BC', language:'Greek',
+    history:'The cradle of democracy, philosophy, and theatre. Then a provincial town, then the capital of modern Greece.',
+    culture:'The Acropolis, the Agora, and a vibrant street-art and rebetiko music scene.',
+    economy:'Tourism, shipping (Greek shipowners control a huge share of global tonnage), and a post-crisis tech scene.',
+    geography:'In a basin surrounded by mountains (Hymettus, Parnitha) on the Attica peninsula.',
+    highlights:['Acropolis','Parthenon','Plaka','Monastiraki','National Archaeological Museum']
+  },
+  fr:{
+    name:'Athènes', country:'Grèce',
+    tagline:'Berceau de la démocratie — pierres antiques sous le soleil méditerranéen.',
+    founded:'~3000 av. J.-C.', language:'Grec',
+    history:'Le berceau de la démocratie, de la philosophie et du théâtre. Puis une ville provinciale, puis la capitale de la Grèce moderne.',
+    culture:'L’Acropole, l’Agora, et une scène vibrante de street-art et de musique rebetiko.',
+    economy:'Tourisme, transport maritime (les armateurs grecs contrôlent une part énorme du tonnage mondial) et une scène tech post-crise.',
+    geography:'Dans un bassin entouré de montagnes (Hymette, Parnès) sur la péninsule de l’Attique.',
+    highlights:['Acropole','Parthénon','Plaka','Monastiraki','Musée archéologique national']
+  },
+  zh:{
+    name:'雅典', country:'希腊',
+    tagline:'民主的诞生地——地中海阳光下的古老石头。',
+    founded:'约公元前 3000 年', language:'希腊语',
+    history:'民主、哲学与戏剧的摇篮。后为外省小城，再成为现代希腊首都。',
+    culture:'卫城、古市集，以及充满活力的街头艺术与雷贝蒂科音乐场景。',
+    economy:'旅游、航运（希腊船东控制全球大量吨位），以及后危机时代的科技产业。',
+    geography:'位于阿提卡半岛，群山环绕的盆地之中（海米托斯山、帕尼萨山）。',
+    highlights:['卫城','帕特农神庙','普拉卡','莫纳斯提拉基','国家考古博物馆']
+  }
+},
+{
+  id:'reykjavik', flag:'🇮🇸', region:'europe', tier:2, weight:2.0,
+  coords:'64.1466° N, 21.9426° W', population:'140K', area:'273 km²', gdp:'$25B',
+  en:{
+    name:'Reykjavík', country:'Iceland',
+    tagline:'The world’s northernmost capital — fire, ice, and aurora.',
+    founded:'874 AD (Ingólfur Arnarson)', language:'Icelandic',
+    history:'A Viking settlement that became a quiet fishing town, then a boomtown during WWII and the Cod Wars.',
+    culture:'A literary nation (Icelandic sagas), a music scene (Björk, Sigur Rós), and a strong geothermal pool culture.',
+    economy:'Fishing, geothermal energy, tourism, and a surprising fintech and gaming scene.',
+    geography:'On the southwest coast, powered by geothermal energy. Earthquakes and volcanic eruptions are a fact of life.',
+    highlights:['Hallgrímskirkja','Blue Lagoon','Harpa Concert Hall','Golden Circle','Northern Lights']
+  },
+  fr:{
+    name:'Reykjavík', country:'Islande',
+    tagline:'La capitale la plus septentrionale du monde — feu, glace et aurores.',
+    founded:'874 apr. J.-C. (Ingólfur Arnarson)', language:'Islandais',
+    history:'Un établissement viking devenu paisible ville de pêche, puis une ville en plein essor pendant la Seconde Guerre mondiale et les Guerres de la morue.',
+    culture:'Une nation littéraire (les sagas islandaises), une scène musicale (Björk, Sigur Rós) et une forte culture des piscines géothermiques.',
+    economy:'Pêche, énergie géothermique, tourisme, et une scène surprenante de fintech et de jeux vidéo.',
+    geography:'Sur la côte sud-ouest, alimentée par l’énergie géothermique. Séismes et éruptions volcaniques font partie du quotidien.',
+    highlights:['Hallgrímskirkja','Blue Lagoon','Harpa','Cercle d’or','Aurores boréales']
+  },
+  zh:{
+    name:'雷克雅未克', country:'冰岛',
+    tagline:'全球最北的首都——火、冰与极光。',
+    founded:'公元 874 年（英格尔夫·阿尔纳尔松）', language:'冰岛语',
+    history:'从维京聚落到安静的渔镇，二战与鳕鱼战争期间成为繁荣之城。',
+    culture:'文学之国（冰岛萨迦）、音乐场景（比约克、席格若斯），以及浓厚的地热泳池文化。',
+    economy:'渔业、地热能源、旅游，以及令人意外的金融科技与游戏产业。',
+    geography:'位于西南海岸，由地热能驱动。地震与火山喷发是生活的一部分。',
+    highlights:['哈尔格林姆教堂','蓝湖','哈帕音乐厅','黄金圈','北极光']
+  }
+},
+{
+  id:'stpetersburg', flag:'🇷🇺', region:'europe', tier:1, weight:2.5,
+  coords:'59.9311° N, 30.3609° E', population:'5.4M', area:'1,439 km²', gdp:'$100B',
+  en:{
+    name:'Saint Petersburg', country:'Russia',
+    tagline:'Russia’s window on Europe — canals, palaces, and white nights.',
+    founded:'1703 (Peter the Great)', language:'Russian',
+    history:'Built by Peter the Great on a swamp to be Russia’s window on Europe, then the imperial capital for two centuries.',
+    culture:'The Hermitage, the Mariinsky Theatre, and the White Nights festival. A city of canals and imperial palaces.',
+    economy:'Industry, finance, and a growing tech sector. Russia’s second-largest economy.',
+    geography:'On the Neva River delta at the head of the Gulf of Finland in the Baltic Sea.',
+    highlights:['Hermitage Museum','Church of the Savior on Blood','Peter and Paul Fortress','Nevsky Prospect','White Nights']
+  },
+  fr:{
+    name:'Saint-Pétersbourg', country:'Russie',
+    tagline:'La fenêtre de la Russie sur l’Europe — canaux, palais et nuits blanches.',
+    founded:'1703 (Pierre le Grand)', language:'Russe',
+    history:'Fondée par Pierre le Grand sur un marais pour être la fenêtre de la Russie sur l’Europe, puis capitale impériale pendant deux siècles.',
+    culture:'L’Ermitage, le théâtre Mariinsky, et le festival des Nuits blanches. Une ville de canaux et de palais impériaux.',
+    economy:'Industrie, finance et un secteur tech en croissance. La deuxième économie de Russie.',
+    geography:'Sur le delta de la Neva, à l’entrée du golfe de Finlande, dans la mer Baltique.',
+    highlights:['Musée de l’Ermitage','Église du Sauveur-sur-le-Sang-Versé','Forteresse Pierre-et-Paul','Perspective Nevski','Nuits blanches']
+  },
+  zh:{
+    name:'圣彼得堡', country:'俄罗斯',
+    tagline:'俄罗斯面向欧洲的窗口——运河、宫殿与白夜。',
+    founded:'1703 年（彼得大帝）', language:'俄语',
+    history:'彼得大帝在沼泽上建立，作为俄罗斯面向欧洲的窗口，此后两个世纪为帝国首都。',
+    culture:'冬宫、马林斯基剧院与白夜节。运河与皇家宫殿之城。',
+    economy:'工业、金融与不断壮大的科技产业。俄罗斯第二大经济体。',
+    geography:'位于涅瓦河三角洲，芬兰湾顶端，波罗的海之滨。',
+    highlights:['冬宫博物馆','滴血救世主教堂','彼得保罗要塞','涅瓦大街','白夜']
+  }
+},
+
+/* ══════════════ AMERICAS — TIER 2 ══════════════ */
+{
+  id:'boston', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'42.3601° N, 71.0589° W', population:'650K', area:'232 km²', gdp:'$200B',
+  en:{
+    name:'Boston', country:'United States',
+    tagline:'Revolutionary history, Ivy League brains, and clam chowder.',
+    founded:'1630', language:'English',
+    history:'A Puritan settlement that became the cradle of the American Revolution (Boston Tea Party, Paul Revere’s ride).',
+    culture:'Harvard, MIT, the Boston Symphony, and a strong Irish-Italian heritage. The Freedom Trail is a living history lesson.',
+    economy:'Higher education, healthcare (Mass General), biotech, and finance. A global leader in life sciences.',
+    geography:'On Massachusetts Bay, with a compact, walkable centre and a harbour dotted with islands.',
+    highlights:['Freedom Trail','Fenway Park','Harvard Yard','Museum of Fine Arts','Boston Common']
+  },
+  fr:{
+    name:'Boston', country:'États-Unis',
+    tagline:'Histoire révolutionnaire, cerveaux Ivy League et chowder de palourdes.',
+    founded:'1630', language:'Anglais',
+    history:'Une colonie puritaine devenue le berceau de la Révolution américaine (Boston Tea Party, chevauchée de Paul Revere).',
+    culture:'Harvard, le MIT, le Boston Symphony, et un fort héritage irlando-italien. Le Freedom Trail est une leçon d’histoire vivante.',
+    economy:'Enseignement supérieur, santé (Mass General), biotech et finance. Un leader mondial des sciences de la vie.',
+    geography:'Sur la baie du Massachusetts, avec un centre compact et piéton et un port parsemé d’îles.',
+    highlights:['Freedom Trail','Fenway Park','Harvard Yard','Musée des Beaux-Arts','Boston Common']
+  },
+  zh:{
+    name:'波士顿', country:'美国',
+    tagline:'革命历史、常春藤智慧与蛤蜊浓汤。',
+    founded:'1630 年', language:'英语',
+    history:'从清教徒定居点到美国独立战争的摇篮（波士顿倾茶事件、保罗·里维尔骑马报信）。',
+    culture:'哈佛、麻省理工、波士顿交响乐团，以及浓厚的爱尔兰—意大利传统。自由之路是活生生的历史课。',
+    economy:'高等教育、医疗（麻省总医院）、生物科技与金融。全球生命科学领域的领导者。',
+    geography:'位于马萨诸塞湾，市中心紧凑适合步行，港湾点缀着岛屿。',
+    highlights:['自由之路','芬威球场','哈佛园','美术博物馆','波士顿公园']
+  }
+},
+{
+  id:'washington', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'38.9072° N, 77.0369° W', population:'700K', area:'177 km²', gdp:'$160B',
+  en:{
+    name:'Washington, D.C.', country:'United States',
+    tagline:'The capital of power — monuments, museums, and marble.',
+    founded:'1790', language:'English',
+    history:'A planned capital designed by Pierre L’Enfant, built on swampy land between Maryland and Virginia.',
+    culture:'The Smithsonian museums (free), the National Mall, and a vibrant food and music scene beyond the monuments.',
+    economy:'Government, lobbying, law, and a growing tech sector. The federal government is the largest employer.',
+    geography:'On the Potomac River, with the Chesapeake Bay nearby. A city of monuments, parks, and embassies.',
+    highlights:['National Mall','Lincoln Memorial','Smithsonian Museums','Capitol Hill','Georgetown']
+  },
+  fr:{
+    name:'Washington, D.C.', country:'États-Unis',
+    tagline:'La capitale du pouvoir — monuments, musées et marbre.',
+    founded:'1790', language:'Anglais',
+    history:'Une capitale planifiée conçue par Pierre L’Enfant, construite sur des terres marécageuses entre le Maryland et la Virginie.',
+    culture:'Les musées Smithsonian (gratuits), le National Mall, et une scène gastronomique et musicale vibrante au-delà des monuments.',
+    economy:'Gouvernement, lobbying, droit et un secteur tech en croissance. Le gouvernement fédéral est le premier employeur.',
+    geography:'Sur le Potomac, près de la baie de Chesapeake. Une ville de monuments, de parcs et d’ambassades.',
+    highlights:['National Mall','Mémorial Lincoln','Musées Smithsonian','Capitol Hill','Georgetown']
+  },
+  zh:{
+    name:'华盛顿特区', country:'美国',
+    tagline:'权力之都——纪念碑、博物馆与大理石。',
+    founded:'1790 年', language:'英语',
+    history:'由皮埃尔·朗方规划的首都，建在马里兰州与弗吉尼亚州之间的沼泽地上。',
+    culture:'史密森尼博物馆（免费）、国家广场，以及纪念碑之外充满活力的美食与音乐场景。',
+    economy:'政府、游说、法律与不断壮大的科技产业。联邦政府是最大雇主。',
+    geography:'位于波托马克河畔，邻近切萨皮克湾。纪念碑、公园与大使馆之城。',
+    highlights:['国家广场','林肯纪念堂','史密森尼博物馆群','国会山','乔治城']
+  }
+},
+{
+  id:'miami', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'25.7617° N, 80.1918° W', population:'450K', area:'92 km²', gdp:'$150B',
+  en:{
+    name:'Miami', country:'United States',
+    tagline:'Latin rhythms, Art Deco, and a gateway to the Americas.',
+    founded:'1896', language:'English / Spanish',
+    history:'A swampy frontier town that became a playground for the rich, then a Cuban exile hub, then a global city.',
+    culture:'Art Deco architecture in South Beach, a strong Cuban and Caribbean influence, and the world’s largest cruise port.',
+    economy:'Tourism, international trade, finance, and a growing tech scene. A major gateway for Latin American business.',
+    geography:'On Biscayne Bay in South Florida, with the Everglades to the west and the Atlantic to the east.',
+    highlights:['South Beach','Wynwood Walls','Little Havana','Vizcaya Museum','Everglades day trip']
+  },
+  fr:{
+    name:'Miami', country:'États-Unis',
+    tagline:'Rythmes latins, Art déco et porte des Amériques.',
+    founded:'1896', language:'Anglais / Espagnol',
+    history:'Une ville frontière marécageuse devenue terrain de jeu des riches, puis foyer de l’exil cubain, puis ville mondiale.',
+    culture:'L’architecture Art déco de South Beach, une forte influence cubaine et caribéenne, et le plus grand port de croisière au monde.',
+    economy:'Tourisme, commerce international, finance et une scène tech en croissance. Une porte majeure pour les affaires latino-américaines.',
+    geography:'Sur la baie de Biscayne, dans le sud de la Floride, avec les Everglades à l’ouest et l’Atlantique à l’est.',
+    highlights:['South Beach','Wynwood Walls','Little Havana','Musée Vizcaya','Excursion dans les Everglades']
+  },
+  zh:{
+    name:'迈阿密', country:'美国',
+    tagline:'拉丁节奏、装饰艺术与通往美洲的门户。',
+    founded:'1896 年', language:'英语 / 西班牙语',
+    history:'从沼泽边陲小镇到富人游乐场，再到古巴流亡者中心，如今是全球城市。',
+    culture:'南海滩的装饰艺术建筑、浓厚的古巴与加勒比影响，以及全球最大的邮轮港口。',
+    economy:'旅游、国际贸易、金融与不断壮大的科技产业。拉丁美洲商业的重要门户。',
+    geography:'位于南佛罗里达的比斯坎湾，西临大沼泽地，东临大西洋。',
+    highlights:['南海滩','温伍德墙','小哈瓦那','维兹卡亚博物馆','大沼泽地一日游']
+  }
+},
+{
+  id:'saltlakecity', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'40.7608° N, 111.8910° W', population:'200K', area:'286 km²', gdp:'$110B',
+  en:{
+    name:'Salt Lake City', country:'United States',
+    tagline:'Mormon roots, mountain access, and a booming tech corridor.',
+    founded:'1847 (Brigham Young)', language:'English',
+    history:'Founded by Mormon pioneers as a religious refuge, then transformed by mining, railroads, and the 2002 Winter Olympics.',
+    culture:'The LDS Church’s global headquarters, the Tabernacle Choir, and a growing counterculture of breweries and arts venues.',
+    economy:'Tech (“Silicon Slopes”), finance, healthcare, and outdoor recreation. One of the fastest-growing US metros.',
+    geography:'In the Salt Lake Valley between the Wasatch Range and the Oquirrh Mountains, with the Great Salt Lake to the northwest.',
+    highlights:['Temple Square','Great Salt Lake','Wasatch Range skiing','Utah State Capitol','Red Butte Garden']
+  },
+  fr:{
+    name:'Salt Lake City', country:'États-Unis',
+    tagline:'Racines mormones, accès à la montagne et corridor tech en plein essor.',
+    founded:'1847 (Brigham Young)', language:'Anglais',
+    history:'Fondée par des pionniers mormons comme refuge religieux, puis transformée par les mines, les chemins de fer et les Jeux olympiques d’hiver de 2002.',
+    culture:'Le siège mondial de l’Église LDS, le Tabernacle Choir, et une contre-culture croissante de brasseries et de lieux artistiques.',
+    economy:'Tech (« Silicon Slopes »), finance, santé et plein air. L’une des métropoles américaines à la croissance la plus rapide.',
+    geography:'Dans la vallée du lac Salé, entre la chaîne Wasatch et les monts Oquirrh, avec le Grand Lac Salé au nord-ouest.',
+    highlights:['Temple Square','Grand Lac Salé','Ski dans le Wasatch','Capitole de l’Utah','Red Butte Garden']
+  },
+  zh:{
+    name:'盐湖城', country:'美国',
+    tagline:'摩门根源、山地便利与蓬勃的科技走廊。',
+    founded:'1847 年（杨百翰）', language:'英语',
+    history:'由摩门先驱建立为宗教避难所，后因采矿、铁路与 2002 年冬奥会而转型。',
+    culture:'LDS 教会全球总部、圣殿合唱团，以及不断壮大的精酿啤酒与艺术场馆亚文化。',
+    economy:'科技（“硅坡”）、金融、医疗与户外休闲。美国增长最快的都会区之一。',
+    geography:'位于瓦萨奇山脉与奥奎尔山脉之间的盐湖谷，西北临大盐湖。',
+    highlights:['圣殿广场','大盐湖','瓦萨奇山脉滑雪','犹他州议会大厦','红丘植物园']
+  }
+},
+{
+  id:'denver', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'39.7392° N, 104.9903° W', population:'715K', area:'401 km²', gdp:'$250B',
+  en:{
+    name:'Denver', country:'United States',
+    tagline:'The Mile High City — mountains, craft beer, and aerospace.',
+    founded:'1858 (gold rush)', language:'English',
+    history:'A gold-rush camp that became the capital of Colorado, then an energy and aerospace hub.',
+    culture:'A strong outdoor culture, a booming craft-beer scene, and a growing arts district (RiNo).',
+    economy:'Aerospace, energy, tech, and healthcare. Denver is a regional hub for the Mountain West.',
+    geography:'On the South Platte River at exactly 5,280 feet, at the foot of the Rocky Mountains.',
+    highlights:['Red Rocks Amphitheatre','Union Station','Denver Art Museum','RiNo Art District','Rocky Mountain National Park']
+  },
+  fr:{
+    name:'Denver', country:'États-Unis',
+    tagline:'La ville à un mile d’altitude — montagnes, bière artisanale et aérospatiale.',
+    founded:'1858 (ruée vers l’or)', language:'Anglais',
+    history:'Un camp de la ruée vers l’or devenu capitale du Colorado, puis un pôle de l’énergie et de l’aérospatiale.',
+    culture:'Une forte culture de plein air, une scène de bière artisanale en plein essor et un quartier artistique en croissance (RiNo).',
+    economy:'Aérospatiale, énergie, tech et santé. Denver est un pôle régional pour le Mountain West.',
+    geography:'Sur la South Platte, à exactement 1 609 m d’altitude, au pied des montagnes Rocheuses.',
+    highlights:['Red Rocks Amphitheatre','Union Station','Musée d’art de Denver','Quartier artistique RiNo','Parc national des Montagnes Rocheuses']
+  },
+  zh:{
+    name:'丹佛', country:'美国',
+    tagline:'一英里高城——群山、精酿啤酒与航空航天。',
+    founded:'1858 年（淘金热）', language:'英语',
+    history:'从淘金营地到科罗拉多州首府，再到能源与航空航天中心。',
+    culture:'浓厚的户外文化、蓬勃的精酿啤酒场景，以及不断壮大的艺术区（RiNo）。',
+    economy:'航空航天、能源、科技与医疗。丹佛是山地西部的区域中心。',
+    geography:'位于南普拉特河畔，海拔恰好一英里，落基山脚下。',
+    highlights:['红岩露天剧场','联合车站','丹佛艺术博物馆','RiNo 艺术区','落基山国家公园']
+  }
+},
+{
+  id:'detroit', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'42.3314° N, 83.0458° W', population:'640K', area:'370 km²', gdp:'$250B',
+  en:{
+    name:'Detroit', country:'United States',
+    tagline:'Motor City — resilience, Motown, and reinvention.',
+    founded:'1701 (Fort Pontchartrain)', language:'English',
+    history:'A French fur-trading post that became the automobile capital of the world, then a symbol of industrial decline and revival.',
+    culture:'Motown, techno, and a legendary music heritage. The Detroit Institute of Arts and a growing creative scene.',
+    economy:'Automotive (Ford, GM, Stellantis), advanced manufacturing, and a growing tech and design sector.',
+    geography:'On the Detroit River across from Windsor, Ontario. A flat, grid-patterned city with vast vacant land.',
+    highlights:['Detroit Institute of Arts','Motown Museum','Belle Isle','Eastern Market','Heidelberg Project']
+  },
+  fr:{
+    name:'Détroit', country:'États-Unis',
+    tagline:'Motor City — résilience, Motown et réinvention.',
+    founded:'1701 (Fort Pontchartrain)', language:'Anglais',
+    history:'Un poste de traite français devenu capitale mondiale de l’automobile, puis symbole du déclin industriel et de la renaissance.',
+    culture:'Motown, la techno, et un héritage musical légendaire. Le Detroit Institute of Arts et une scène créative en croissance.',
+    economy:'Automobile (Ford, GM, Stellantis), fabrication avancée et un secteur tech et design en croissance.',
+    geography:'Sur la rivière Détroit, face à Windsor, en Ontario. Une ville plate quadrillée aux vastes terrains vacants.',
+    highlights:['Detroit Institute of Arts','Musée Motown','Belle Isle','Eastern Market','Heidelberg Project']
+  },
+  zh:{
+    name:'底特律', country:'美国',
+    tagline:'汽车城——韧性、摩城与重塑。',
+    founded:'1701 年（庞恰特雷恩堡）', language:'英语',
+    history:'从法国毛皮贸易站到全球汽车之都，再到工业衰落与复兴的象征。',
+    culture:'摩城音乐、底特律电子乐，以及传奇的音乐遗产。底特律艺术博物馆与不断壮大的创意场景。',
+    economy:'汽车（福特、通用、Stellantis）、先进制造，以及不断壮大的科技与设计产业。',
+    geography:'位于底特律河畔，对岸是安大略省温莎。平坦的网格状城市，大量空地。',
+    highlights:['底特律艺术博物馆','摩城博物馆','贝尔岛','东部市场','海德堡项目']
+  }
+},
+{
+  id:'neworleans', flag:'🇺🇸', region:'americas', tier:2, weight:2.0,
+  coords:'29.9511° N, 90.0715° W', population:'380K', area:'350 km²', gdp:'$80B',
+  en:{
+    name:'New Orleans', country:'United States',
+    tagline:'Jazz, gumbo, and a culture unlike anywhere else in America.',
+    founded:'1718 (La Nouvelle-Orléans)', language:'English / French / Creole',
+    history:'A French colonial port, then Spanish, then American. A melting pot of African, French, Spanish, and Caribbean cultures.',
+    culture:'The birthplace of jazz, the home of Mardi Gras, and a cuisine (gumbo, jambalaya, beignets) that is a language of its own.',
+    economy:'Tourism, port trade, oil and gas, and a growing film and tech scene.',
+    geography:'On the Mississippi River delta, below sea level in places, vulnerable to hurricanes (Katrina, 2005).',
+    highlights:['French Quarter','Bourbon Street','Frenchmen Street','Garden District','Café du Monde']
+  },
+  fr:{
+    name:'La Nouvelle-Orléans', country:'États-Unis',
+    tagline:'Jazz, gumbo, et une culture unique en Amérique.',
+    founded:'1718 (La Nouvelle-Orléans)', language:'Anglais / Français / Créole',
+    history:'Un port colonial français, puis espagnol, puis américain. Un creuset de cultures africaine, française, espagnole et caribéenne.',
+    culture:'Le berceau du jazz, la patrie de Mardi Gras, et une cuisine (gumbo, jambalaya, beignets) qui est une langue à part entière.',
+    economy:'Tourisme, commerce portuaire, pétrole et gaz, et une scène cinéma et tech en croissance.',
+    geography:'Sur le delta du Mississippi, par endroits sous le niveau de la mer, vulnérable aux ouragans (Katrina, 2005).',
+    highlights:['Vieux Carré','Bourbon Street','Frenchmen Street','Garden District','Café du Monde']
+  },
+  zh:{
+    name:'新奥尔良', country:'美国',
+    tagline:'爵士乐、秋葵汤，以及美国独一无二的文化。',
+    founded:'1718 年（新奥尔良）', language:'英语 / 法语 / 克里奥尔语',
+    history:'从法国殖民港口到西班牙、再到美国。非洲、法国、西班牙与加勒比文化的熔炉。',
+    culture:'爵士乐的诞生地、狂欢节的故乡，以及本身就是一种语言的料理（秋葵汤、什锦饭、贝涅饼）。',
+    economy:'旅游、港口贸易、石油天然气，以及不断壮大的电影与科技产业。',
+    geography:'位于密西西比河三角洲，部分地区低于海平面，易受飓风影响（2005 年卡特里娜）。',
+    highlights:['法国区','波旁街','法国人街','花园区','世界咖啡馆']
+  }
+},
+{
+  id:'guadalajara', flag:'🇲🇽', region:'americas', tier:2, weight:1.5,
+  coords:'20.6597° N, 103.3496° W', population:'1.5M', area:'151 km²', gdp:'$80B',
+  en:{
+    name:'Guadalajara', country:'Mexico',
+    tagline:'Tequila, mariachi, and Mexico’s Silicon Valley.',
+    founded:'1542', language:'Spanish',
+    history:'A colonial city that became the capital of Jalisco and the birthplace of mariachi and tequila.',
+    culture:'Mariachi, tequila, and a strong arts and literary tradition. The Hospicio Cabañas is a UNESCO site.',
+    economy:'Tech (“Mexican Silicon Valley”), manufacturing, and agriculture. A major electronics hub.',
+    geography:'In the Jalisco highlands of western Mexico, at 1,566 m elevation.',
+    highlights:['Hospicio Cabañas','Tlaquepaque','Tequila day trip','Guadalajara Cathedral','Chapultepec Avenue']
+  },
+  fr:{
+    name:'Guadalajara', country:'Mexique',
+    tagline:'Tequila, mariachi et la Silicon Valley mexicaine.',
+    founded:'1542', language:'Espagnol',
+    history:'Une ville coloniale devenue capitale du Jalisco et berceau du mariachi et de la tequila.',
+    culture:'Mariachi, tequila, et une forte tradition artistique et littéraire. L’Hospicio Cabañas est un site UNESCO.',
+    economy:'Tech (« Silicon Valley mexicaine »), industrie et agriculture. Un grand pôle électronique.',
+    geography:'Dans les hautes terres du Jalisco, dans l’ouest du Mexique, à 1 566 m d’altitude.',
+    highlights:['Hospicio Cabañas','Tlaquepaque','Excursion à Tequila','Cathédrale de Guadalajara','Avenue Chapultepec']
+  },
+  zh:{
+    name:'瓜达拉哈拉', country:'墨西哥',
+    tagline:'龙舌兰、马里亚契与墨西哥的硅谷。',
+    founded:'1542 年', language:'西班牙语',
+    history:'从殖民城市到哈利斯科州首府，马里亚契与龙舌兰的诞生地。',
+    culture:'马里亚契、龙舌兰，以及强大的艺术与文学传统。卡瓦尼亚斯济贫院是联合国教科文组织世界遗产。',
+    economy:'科技（“墨西哥硅谷”）、制造业与农业。重要的电子产业中心。',
+    geography:'位于墨西哥西部哈利斯科高地，海拔 1,566 米。',
+    highlights:['卡瓦尼亚斯济贫院','塔拉克帕克','龙舌兰一日游','瓜达拉哈拉大教堂','查普尔特佩克大道']
+  }
+},
+{
+  id:'bogota', flag:'🇨🇴', region:'americas', tier:2, weight:2.0,
+  coords:'4.7110° N, 74.0721° W', population:'7.4M', area:'1,587 km²', gdp:'$100B',
+  en:{
+    name:'Bogotá', country:'Colombia',
+    tagline:'High-altitude capital — gold, graffiti, and Andean grit.',
+    founded:'1538 (Gonzalo Jiménez de Quesada)', language:'Spanish',
+    history:'The capital of the Muisca confederation, then the seat of Spanish colonial power, then the capital of Gran Colombia.',
+    culture:'The Gold Museum, a thriving street-art scene, and a literary tradition (Gabriel García Márquez lived here).',
+    economy:'Finance, services, and a growing tech and creative sector. Colombia’s economic engine.',
+    geography:'On a high plateau (2,640 m) in the Andes, surrounded by mountains. Cool, rainy climate.',
+    highlights:['Gold Museum','Monserrate','La Candelaria','Botero Museum','Zipaquirá Salt Cathedral']
+  },
+  fr:{
+    name:'Bogotá', country:'Colombie',
+    tagline:'Capitale d’altitude — or, graffiti et cran andin.',
+    founded:'1538 (Gonzalo Jiménez de Quesada)', language:'Espagnol',
+    history:'Capitale de la confédération muisca, puis siège du pouvoir colonial espagnol, puis capitale de la Grande Colombie.',
+    culture:'Le musée de l’Or, une scène de street-art florissante, et une tradition littéraire (Gabriel García Márquez y a vécu).',
+    economy:'Finance, services et un secteur tech et créatif en croissance. Le moteur économique de la Colombie.',
+    geography:'Sur un haut plateau (2 640 m) des Andes, entourée de montagnes. Climat frais et pluvieux.',
+    highlights:['Musée de l’Or','Monserrate','La Candelaria','Musée Botero','Cathédrale de sel de Zipaquirá']
+  },
+  zh:{
+    name:'波哥大', country:'哥伦比亚',
+    tagline:'高原首都——黄金、涂鸦与安第斯韧性。',
+    founded:'1538 年（贡萨洛·希门尼斯·德·克萨达）', language:'西班牙语',
+    history:'穆伊斯卡联盟首都，后为西班牙殖民权力中心，再成为大哥伦比亚首都。',
+    culture:'黄金博物馆、繁荣的街头艺术场景，以及文学传统（加西亚·马尔克斯曾在此居住）。',
+    economy:'金融、服务业，以及不断壮大的科技与创意产业。哥伦比亚的经济引擎。',
+    geography:'位于安第斯山脉海拔 2,640 米的高原，群山环绕。凉爽多雨的气候。',
+    highlights:['黄金博物馆','蒙塞拉特山','坎德拉里亚','博特罗博物馆','锡帕基拉盐教堂']
+  }
+},
+{
+  id:'lima', flag:'🇵🇪', region:'americas', tier:2, weight:2.0,
+  coords:'12.0464° S, 77.0428° W', population:'9.7M', area:'2,672 km²', gdp:'$120B',
+  en:{
+    name:'Lima', country:'Peru',
+    tagline:'A gastronomic capital on the Pacific — colonial, coastal, and complex.',
+    founded:'1535 (Francisco Pizarro)', language:'Spanish / Quechua',
+    history:'The “City of Kings”, capital of the Spanish Viceroyalty of Peru, built on the ruins of indigenous settlements.',
+    culture:'A UNESCO-listed historic centre, and a food scene (ceviche, nikkei, chifa) that is among the world’s best.',
+    economy:'Finance, manufacturing, tourism, and a growing tech sector. The gastronomy boom has global reach.',
+    geography:'On the Pacific coast, in a desert strip between the Andes and the ocean. Often covered in a grey mist (garúa).',
+    highlights:['Plaza Mayor','Miraflores','Barranco','Huaca Pucllana','Central restaurant']
+  },
+  fr:{
+    name:'Lima', country:'Pérou',
+    tagline:'Une capitale gastronomique sur le Pacifique — coloniale, côtière et complexe.',
+    founded:'1535 (Francisco Pizarro)', language:'Espagnol / Quechua',
+    history:'La « Cité des Rois », capitale de la vice-royauté espagnole du Pérou, bâtie sur les ruines de colonies indigènes.',
+    culture:'Un centre historique classé UNESCO, et une scène gastronomique (ceviche, nikkei, chifa) parmi les meilleures au monde.',
+    economy:'Finance, industrie, tourisme et un secteur tech en croissance. Le boom gastronomique a une portée mondiale.',
+    geography:'Sur la côte Pacifique, dans une bande désertique entre les Andes et l’océan. Souvent couverte d’une brume grise (garúa).',
+    highlights:['Plaza Mayor','Miraflores','Barranco','Huaca Pucllana','Restaurant Central']
+  },
+  zh:{
+    name:'利马', country:'秘鲁',
+    tagline:'太平洋畔的美食之都——殖民、海岸与复杂。',
+    founded:'1535 年（弗朗西斯科·皮萨罗）', language:'西班牙语 / 克丘亚语',
+    history:'“王者之城”，西班牙秘鲁总督区首府，建在原住民聚落废墟之上。',
+    culture:'联合国教科文组织世界遗产历史中心，以及全球顶尖的美食场景（酸橘汁腌鱼、日秘融合、中秘融合）。',
+    economy:'金融、制造、旅游与不断壮大的科技产业。美食热潮具有全球影响力。',
+    geography:'位于太平洋沿岸，介于安第斯山脉与海洋之间的沙漠地带。常被灰色薄雾（garúa）笼罩。',
+    highlights:['主广场','米拉弗洛雷斯','巴兰科','普克拉纳神庙','Central 餐厅']
+  }
+},
+{
+  id:'santiago', flag:'🇨🇱', region:'americas', tier:2, weight:2.0,
+  coords:'33.4489° S, 70.6693° W', population:'6.2M', area:'641 km²', gdp:'$180B',
+  en:{
+    name:'Santiago', country:'Chile',
+    tagline:'Andes-backed, wine-fed, and South America’s most stable economy.',
+    founded:'1541 (Pedro de Valdivia)', language:'Spanish',
+    history:'A Spanish colonial outpost that became the capital of an independent Chile, then a model of Latin American economic reform.',
+    culture:'A strong literary tradition (Pablo Neruda, Isabel Allende), a booming wine culture, and the Andes as a constant backdrop.',
+    economy:'Mining (copper), finance, retail, and a growing tech sector. Chile’s economic and political centre.',
+    geography:'In a valley between the Andes and the Chilean Coastal Range, prone to earthquakes.',
+    highlights:['Cerro San Cristóbal','Plaza de Armas','La Moneda','Bellavista','Valparaíso day trip']
+  },
+  fr:{
+    name:'Santiago', country:'Chili',
+    tagline:'Adossée aux Andes, nourrie par la vigne, l’économie la plus stable d’Amérique du Sud.',
+    founded:'1541 (Pedro de Valdivia)', language:'Espagnol',
+    history:'Un avant-poste colonial espagnol devenu capitale d’un Chili indépendant, puis modèle de réforme économique en Amérique latine.',
+    culture:'Une forte tradition littéraire (Pablo Neruda, Isabel Allende), une culture viticole florissante et les Andes en toile de fond permanente.',
+    economy:'Mines (cuivre), finance, commerce de détail et un secteur tech en croissance. Le centre économique et politique du Chili.',
+    geography:'Dans une vallée entre les Andes et la cordillère de la Côte, sujette aux séismes.',
+    highlights:['Cerro San Cristóbal','Plaza de Armas','La Moneda','Bellavista','Excursion à Valparaíso']
+  },
+  zh:{
+    name:'圣地亚哥', country:'智利',
+    tagline:'背靠安第斯、葡萄酒之乡，南美最稳定的经济体。',
+    founded:'1541 年（佩德罗·德·瓦尔迪维亚）', language:'西班牙语',
+    history:'从西班牙殖民据点，到独立智利的首都，再到拉丁美洲经济改革的典范。',
+    culture:'强大的文学传统（巴勃罗·聂鲁达、伊莎贝尔·阿连德）、蓬勃的葡萄酒文化，以及永恒的安第斯山背景。',
+    economy:'矿业（铜）、金融、零售与不断壮大的科技产业。智利的经济与政治中心。',
+    geography:'位于安第斯山脉与智利海岸山脉之间的谷地，易受地震影响。',
+    highlights:['圣克里斯托瓦尔山','武器广场','拉莫内达宫','贝亚维斯塔','瓦尔帕莱索一日游']
+  }
+},
+{
+  id:'riodejaneiro', flag:'🇧🇷', region:'americas', tier:1, weight:2.0,
+  coords:'22.9068° S, 43.1729° W', population:'6.7M', area:'1,200 km²', gdp:'$200B',
+  en:{
+    name:'Rio de Janeiro', country:'Brazil',
+    tagline:'Cidade maravilhosa — mountains, beaches, and carnival.',
+    founded:'1565 (Estácio de Sá)', language:'Portuguese',
+    history:'A Portuguese colonial capital, then the capital of Brazil until 1960. A city of dramatic natural beauty.',
+    culture:'Carnival, samba, and a beach culture (Copacabana, Ipanema) that is a way of life.',
+    economy:'Tourism, oil and gas, and a growing tech and creative sector. Brazil’s second-largest economy.',
+    geography:'Between the Atlantic Ocean and the Serra do Mar mountains, with Guanabara Bay and Sugarloaf Mountain.',
+    highlights:['Christ the Redeemer','Sugarloaf Mountain','Copacabana Beach','Selarón Steps','Tijuca Forest']
+  },
+  fr:{
+    name:'Rio de Janeiro', country:'Brésil',
+    tagline:'Cidade maravilhosa — montagnes, plages et carnaval.',
+    founded:'1565 (Estácio de Sá)', language:'Portugais',
+    history:'Une capitale coloniale portugaise, puis la capitale du Brésil jusqu’en 1960. Une ville d’une beauté naturelle spectaculaire.',
+    culture:'Le carnaval, la samba, et une culture de plage (Copacabana, Ipanema) qui est un art de vivre.',
+    economy:'Tourisme, pétrole et gaz, et un secteur tech et créatif en croissance. La deuxième économie du Brésil.',
+    geography:'Entre l’océan Atlantique et la Serra do Mar, avec la baie de Guanabara et le Pain de Sucre.',
+    highlights:['Christ Rédempteur','Pain de Sucre','Plage de Copacabana','Escalier Selarón','Forêt de Tijuca']
+  },
+  zh:{
+    name:'里约热内卢', country:'巴西',
+    tagline:'奇妙之城——群山、海滩与狂欢节。',
+    founded:'1565 年（埃斯塔西奥·德·萨）', language:'葡萄牙语',
+    history:'葡萄牙殖民首都，直至 1960 年为巴西首都。一座拥有震撼自然之美的城市。',
+    culture:'狂欢节、桑巴，以及作为生活方式的沙滩文化（科帕卡巴纳、伊帕内玛）。',
+    economy:'旅游、石油天然气，以及不断壮大的科技与创意产业。巴西第二大经济体。',
+    geography:'位于大西洋与塞拉多马尔山脉之间，拥有瓜纳巴拉湾与糖面包山。',
+    highlights:['救世基督像','糖面包山','科帕卡巴纳海滩','塞拉龙台阶','蒂茹卡森林']
+  }
+}
+
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════ */
+
+var LANGS = ['en','fr','zh'];
+var LANG_KEY = 'ln-lab-explorer-lang';
+
+var state = {
+  lang: loadLang(),
+  filter: 'all',
+  query: '',
+  openId: null,
+  activeTabs: {}
+};
+
+var TAB_NAMES = ['history','culture','economy','geography'];
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+function $(id){ return document.getElementById(id); }
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function t(key, vars){
+  var dict = I18N[state.lang] || I18N.en;
+  var str = dict[key];
+  if(str == null) str = I18N.en[key] || key;
+  if(vars){
+    for(var k in vars){
+      str = str.replace('{' + k + '}', vars[k]);
+    }
+  }
+  return str;
+}
+
+function loadLang(){
+  try{
+    var saved = localStorage.getItem(LANG_KEY);
+    if(saved && LANGS.indexOf(saved) !== -1) return saved;
+  }catch(e){}
+  // Detect from browser
+  var nav = (navigator.language || 'en').toLowerCase();
+  if(nav.indexOf('zh') === 0) return 'zh';
+  if(nav.indexOf('fr') === 0) return 'fr';
+  return 'en';
+}
+
+function saveLang(lang){
+  try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+}
+
+function loc(city, field){
+  var bundle = city[state.lang] || city.en;
+  if(bundle && bundle[field] != null) return bundle[field];
+  return city.en[field];
+}
+
+var toastTimer = null;
+function toast(msg, ms){
+  var el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms || 2200);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTERING
+   ═══════════════════════════════════════════════════════════════ */
+
+function getFiltered(){
+  var q = state.query.trim().toLowerCase();
+  var f = state.filter;
+
+  return CITIES.filter(function(c){
+    if(f === 'europe' && c.region !== 'europe') return false;
+    if(f === 'americas' && c.region !== 'americas') return false;
+    if(f === 'tier1' && c.tier !== 1) return false;
+    if(f === 'tier2' && c.tier !== 2) return false;
+    if(f === 'hub' && (c.weight || 1) < 1.8) return false;
+
+    if(!q) return true;
+
+    // Search across all three languages so users can type in any of them
+    var hay = [];
+    for(var L = 0; L < LANGS.length; L++){
+      var b = c[LANGS[L]] || c.en;
+      hay.push(b.name, b.country, b.tagline, b.history, b.culture, b.economy, b.geography);
+      if(b.highlights) hay.push(b.highlights.join(' '));
+    }
+    return hay.join(' ').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WEIGHTED RANDOM
+   ═══════════════════════════════════════════════════════════════ */
+
+function weightedRandom(cities){
+  var total = 0;
+  for(var i = 0; i < cities.length; i++) total += (cities[i].weight || 1);
+
+  var r = Math.random() * total;
+  var acc = 0;
+  for(var j = 0; j < cities.length; j++){
+    acc += (cities[j].weight || 1);
+    if(r <= acc) return cities[j];
+  }
+  return cities[cities.length - 1];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDERING
+   ═══════════════════════════════════════════════════════════════ */
+
+function fact(label, value){
+  return '<div class="fact">' +
+    '<span class="fact-label">' + esc(label) + '</span>' +
+    '<span class="fact-value">' + esc(value) + '</span>' +
+  '</div>';
+}
+
+function buildTabPanels(c){
+  var html = '';
+  var activeTab = state.activeTabs[c.id] || 'history';
+
+  var tabKeys = {
+    history: 'tabHistory',
+    culture: 'tabCulture',
+    economy: 'tabEconomy',
+    geography: 'tabGeography'
+  };
+
+  for(var i = 0; i < TAB_NAMES.length; i++){
+    var name = TAB_NAMES[i];
+    var isActive = activeTab === name;
+    var content = loc(c, name) || '';
+
+    html += '<div class="tab-panel' + (isActive ? ' active' : '') + '" data-panel="' + name + '">';
+    html += '<p class="panel-text">' + esc(content) + '</p>';
+
+    if(name === 'history'){
+      html += '<div class="fact-grid">';
+      html += fact(t('factFounded'), loc(c,'founded'));
+      html += fact(t('factPopulation'), c.population);
+      html += fact(t('factArea'), c.area);
+      html += fact(t('factLanguage'), loc(c,'language'));
+      html += '</div>';
+    }
+
+    if(name === 'economy'){
+      html += '<div class="fact-grid">';
+      html += fact(t('factGdp'), c.gdp);
+      html += fact(t('factCurrency'), c.region === 'europe' ? t('currencyEurope') : t('currencyAmericas'));
+      html += '</div>';
+    }
+
+    if(name === 'geography'){
+      html += '<div class="fact-grid">';
+      html += fact(t('factCoordinates'), c.coords);
+      html += fact(t('factRegion'), c.region === 'europe' ? t('regionEurope') : t('regionAmericas'));
+      html += '</div>';
+    }
+
+    if(name === 'culture'){
+      var highlights = loc(c, 'highlights') || [];
+      html += '<div class="highlight-list">';
+      for(var h = 0; h < highlights.length; h++){
+        html += '<div class="highlight">' + esc(highlights[h]) + '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function buildTabs(c){
+  var active = state.activeTabs[c.id] || 'history';
+  var tabKeys = ['tabHistory','tabCulture','tabEconomy','tabGeography'];
+  var html = '<div class="tabs" role="tablist">';
+
+  for(var i = 0; i < TAB_NAMES.length; i++){
+    var name = TAB_NAMES[i];
+    html += '<button class="tab' + (active === name ? ' active' : '') +
+            '" data-tab="' + name + '" role="tab" type="button">' +
+            esc(t(tabKeys[i])) + '</button>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function buildCard(c){
+  var isOpen = state.openId === c.id;
+  var tierLabel = c.tier === 1 ? t('tier1') : t('tier2');
+  var isHub = (c.weight || 1) >= 1.8;
+
+  var html = '<article class="card' + (isOpen ? ' open' : '') + (isHub ? ' hub' : '') +
+             '" data-id="' + esc(c.id) + '" role="listitem" tabindex="0">';
+
+  html += '<div class="card-front">';
+  html += '<div class="card-flag">' + c.flag + '</div>';
+  html += '<div class="card-name">' + esc(loc(c,'name')) + '</div>';
+  html += '<div class="card-country">' + esc(loc(c,'country')) + ' · ' + tierLabel + '</div>';
+  html += '<div class="card-tagline">' + esc(loc(c,'tagline')) + '</div>';
+  html += '<div class="card-meta">';
+  html += '<span class="meta-item">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>' +
+    esc(c.region === 'europe' ? t('regionEurope') : t('regionAmericas')) + '</span>';
+  html += '<span class="meta-item">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+    esc(c.population) + '</span>';
+  html += '</div>';
+  html += '<span class="card-expand">' + esc(t('explore')) + ' <span aria-hidden="true">↓</span></span>';
+  html += '</div>';
+
+  html += '<div class="card-detail">';
+  html += '<div class="card-detail-inner">';
+  html += '<div class="detail-divider"></div>';
+  html += buildTabs(c);
+  html += buildTabPanels(c);
+  html += '</div>';
+  html += '</div>';
+
+  html += '</article>';
+
+  return html;
+}
+
+function render(){
+  var grid = $('grid');
+  var filtered = getFiltered();
+
+  if(filtered.length === 0){
+    grid.innerHTML =
+      '<div class="empty">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+        '<div>' + esc(t('empty')) + '</div>' +
+      '</div>';
+  } else {
+    var html = '';
+    for(var i = 0; i < filtered.length; i++){
+      html += buildCard(filtered[i]);
+    }
+    grid.innerHTML = html;
+  }
+
+  var total = CITIES.length;
+  var shown = filtered.length;
+  $('statsText').textContent = t('statsOf', { shown: shown, total: total });
+
+  var openName = '';
+  if(state.openId){
+    for(var j = 0; j < CITIES.length; j++){
+      if(CITIES[j].id === state.openId){ openName = loc(CITIES[j], 'name'); break; }
+    }
+  }
+  $('statsHint').textContent = openName ? t('hintExploring', { name: openName }) : t('hintExpand');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRID EVENTS
+   ═══════════════════════════════════════════════════════════════ */
+
+function bindGrid(){
+  var grid = $('grid');
+
+  grid.addEventListener('click', function(e){
+    var card = e.target.closest('.card');
+    if(!card) return;
+    var id = card.getAttribute('data-id');
+    if(!id) return;
+
+    var tab = e.target.closest('.tab');
+    if(tab){
+      e.stopPropagation();
+      var tabName = tab.getAttribute('data-tab');
+      state.activeTabs[id] = tabName;
+
+      var tabs = card.querySelectorAll('.tab');
+      for(var i = 0; i < tabs.length; i++){
+        tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab') === tabName);
+      }
+      var panels = card.querySelectorAll('.tab-panel');
+      for(var j = 0; j < panels.length; j++){
+        panels[j].classList.toggle('active', panels[j].getAttribute('data-panel') === tabName);
+      }
+      return;
+    }
+
+    if(state.openId === id){
+      state.openId = null;
+      card.classList.remove('open');
+      $('statsHint').textContent = t('hintExpand');
+    } else {
+      var prev = grid.querySelector('.card.open');
+      if(prev) prev.classList.remove('open');
+
+      state.openId = id;
+      card.classList.add('open');
+
+      var cityName = '';
+      for(var k = 0; k < CITIES.length; k++){
+        if(CITIES[k].id === id){ cityName = loc(CITIES[k], 'name'); break; }
+      }
+      $('statsHint').textContent = t('hintExploring', { name: cityName });
+    }
+  });
+
+  grid.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    var card = e.target.closest('.card');
+    if(!card) return;
+    e.preventDefault();
+    card.click();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RANDOM
+   ═══════════════════════════════════════════════════════════════ */
+
+function randomCity(){
+  var filtered = getFiltered();
+  if(filtered.length === 0){ toast(t('toastNoCities')); return; }
+
+  var pick = weightedRandom(filtered);
+
+  var prev = $('grid').querySelector('.card.open');
+  if(prev) prev.classList.remove('open');
+
+  state.openId = pick.id;
+  render();
+
+  requestAnimationFrame(function(){
+    var el = $('grid').querySelector('[data-id="' + pick.id + '"]');
+    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  var hubMark = (pick.weight || 1) >= 2.5 ? t('toastHub') : '';
+  toast(t('toastExploring', { name: loc(pick,'name'), country: loc(pick,'country') }) + hubMark);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   I18N UI APPLY
+   ═══════════════════════════════════════════════════════════════ */
+
+function applyLangToUI(){
+  // Document title & lang attribute
+  document.documentElement.setAttribute('lang', state.lang === 'zh' ? 'zh-CN' : state.lang);
+
+  // Page title
+  $('pageTitle').innerHTML = esc(t('pageTitle')) + '<br><em>' + esc(t('pageTitleSub')) + '</em>';
+  $('pageSub').textContent = t('pageSub');
+
+  // Random button
+  $('randomBtn').querySelector('[data-i18n="random"]').textContent = t('random');
+
+  // Shuffle aria-label
+  $('shuffleBtn').setAttribute('aria-label', t('clearFilters'));
+  $('shuffleBtn').setAttribute('title', t('clearFilters'));
+
+  // Search placeholder
+  $('searchInput').setAttribute('placeholder', t('searchPlaceholder'));
+
+  // Filter chips
+  var chips = $('filterChips').querySelectorAll('.chip');
+  var chipKeys = {
+    all: 'filterAll', europe: 'filterEurope', americas: 'filterAmericas',
+    hub: 'filterHub', tier1: 'filterTier1', tier2: 'filterTier2'
+  };
+  for(var i = 0; i < chips.length; i++){
+    var key = chipKeys[chips[i].getAttribute('data-filter')];
+    if(key) chips[i].textContent = t(key);
+  }
+
+  // Footer contact
+  $('contactLink').textContent = t('contact');
+
+  // Language buttons
+  var langBtns = $('langSwitch').querySelectorAll('.lang-btn');
+  for(var L = 0; L < langBtns.length; L++){
+    langBtns[L].classList.toggle('active', langBtns[L].getAttribute('data-lang') === state.lang);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════ */
+
+function init(){
+  $('year').textContent = new Date().getFullYear();
+
+  for(var i = 0; i < CITIES.length; i++){
+    state.activeTabs[CITIES[i].id] = 'history';
+  }
+
+  applyLangToUI();
+  render();
+  bindGrid();
+
+  /* Search */
+  var searchTimer = null;
+  $('searchInput').addEventListener('input', function(e){
+    var val = e.target.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function(){
+      state.query = val;
+      render();
+    }, 180);
+  });
+
+  /* Filter chips */
+  $('filterChips').addEventListener('click', function(e){
+    var chip = e.target.closest('.chip');
+    if(!chip) return;
+    state.filter = chip.getAttribute('data-filter');
+    state.openId = null;
+    var chips = $('filterChips').querySelectorAll('.chip');
+    for(var i = 0; i < chips.length; i++){
+      chips[i].classList.toggle('active', chips[i] === chip);
+    }
+    render();
+  });
+
+  /* Random */
+  $('randomBtn').addEventListener('click', randomCity);
+
+  /* Clear filters */
+  $('shuffleBtn').addEventListener('click', function(){
+    state.filter = 'all';
+    state.query = '';
+    state.openId = null;
+    $('searchInput').value = '';
+    var chips = $('filterChips').querySelectorAll('.chip');
+    for(var i = 0; i < chips.length; i++){
+      chips[i].classList.toggle('active', chips[i].getAttribute('data-filter') === 'all');
+    }
+    render();
+    toast(t('toastCleared'));
+  });
+
+  /* Language switch */
+  $('langSwitch').addEventListener('click', function(e){
+    var btn = e.target.closest('.lang-btn');
+    if(!btn) return;
+    var lang = btn.getAttribute('data-lang');
+    if(lang === state.lang) return;
+
+    state.lang = lang;
+    saveLang(lang);
+    applyLangToUI();
+    render();
+  });
+
+  /* Keyboard: R for random */
+  document.addEventListener('keydown', function(e){
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if(e.key === 'r' || e.key === 'R'){
+      if(!e.ctrlKey && !e.metaKey && !e.altKey) randomCity();
+    }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
